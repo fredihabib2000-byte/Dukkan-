@@ -79,12 +79,12 @@ export const STATUS_NEXT: Partial<Record<OrderStatus, OrderStatus>> = {
   delivering: 'delivered',
 };
 
-export const ORDER_STATUS_LABEL = STATUS_LABEL;
-
 export const STATUS_LABEL: Record<OrderStatus, string> = {
   pending: 'Pending', confirmed: 'Confirmed', preparing: 'Preparing',
   ready: 'Ready', delivering: 'On the way', delivered: 'Delivered', cancelled: 'Cancelled',
 };
+
+export const ORDER_STATUS_LABEL = STATUS_LABEL;
 
 export const STATUS_COLOR: Record<OrderStatus, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
