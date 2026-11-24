@@ -1,0 +1,17 @@
+{
+  "name": "dukkan",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "customer-app",
+    "merchant-web"
+  ],
+  "scripts": {
+    "customer": "cd customer-app && npx expo start",
+    "merchant": "cd merchant-web && npm run dev",
+    "build:merchant": "cd merchant-web && npm run build",
+    "build:ios": "cd customer-app && eas build --platform ios",
+    "build:android": "cd customer-app && eas build --platform android",
+    "build:all": "cd customer-app && eas build --platform all"
+  }
+}
