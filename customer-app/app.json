@@ -26,7 +26,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Dukkan to use your location for delivery."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

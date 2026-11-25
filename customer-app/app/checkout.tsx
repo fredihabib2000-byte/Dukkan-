@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, Alert, ActivityIndicator,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ export default function CheckoutScreen() {
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('now');
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [showNotes, setShowNotes] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const subtotal = total();
   const orderTotal = subtotal + deliveryFee;
@@ -46,6 +48,30 @@ export default function CheckoutScreen() {
         });
     }
   }, [storeId]);
+
+  const handleGetLocation = async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Please allow location access in settings.');
+        setLocating(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const [place] = await Location.reverseGeocodeAsync(loc.coords);
+      if (place) {
+        const parts = [place.street, place.streetNumber, place.district, place.city].filter(Boolean);
+        setAddress(parts.join(', '));
+        if (place.name && place.name !== place.street) setBuilding(place.name);
+      } else {
+        setAddress(`${loc.coords.latitude.toFixed(5)}, ${loc.coords.longitude.toFixed(5)}`);
+      }
+    } catch {
+      Alert.alert('Error', 'Could not get your location. Please enter it manually.');
+    }
+    setLocating(false);
+  };
 
   const toggleInstruction = (key: Instruction) => {
     setInstructions((prev) =>
@@ -143,6 +169,16 @@ export default function CheckoutScreen() {
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Delivery Address</Text>
+            <TouchableOpacity style={styles.gpsBtn} onPress={handleGetLocation} disabled={locating}>
+              {locating ? (
+                <ActivityIndicator size="small" color="#16A34A" />
+              ) : (
+                <>
+                  <Ionicons name="location-outline" size={14} color="#16A34A" />
+                  <Text style={styles.gpsBtnText}>Use my location</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
           <TextInput
             style={styles.input}
@@ -241,6 +277,12 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#fff', padding: 18, gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  gpsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#F0FDF4', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: '#BBF7D0',
+  },
+  gpsBtnText: { fontSize: 12, color: '#16A34A', fontWeight: '600' },
 
   modeRow: { flexDirection: 'row', gap: 10 },
   modeBtn: {

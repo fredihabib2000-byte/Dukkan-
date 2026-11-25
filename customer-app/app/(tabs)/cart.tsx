@@ -1,11 +1,20 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 import { useCartStore } from '@/store/cart';
 
 export default function CartScreen() {
-  const { items, updateQuantity, removeItem, total, storeId } = useCartStore();
+  const { items, updateQuantity, total, storeId } = useCartStore();
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+
+  useEffect(() => {
+    if (!storeId) return;
+    supabase.from('stores').select('delivery_fee').eq('id', storeId).single()
+      .then(({ data }) => { if (data) setDeliveryFee(data.delivery_fee ?? 0); });
+  }, [storeId]);
 
   if (items.length === 0) {
     return (
@@ -20,7 +29,6 @@ export default function CartScreen() {
     );
   }
 
-  const deliveryFee = 2.00;
   const orderTotal = total() + deliveryFee;
 
   return (
@@ -66,7 +74,7 @@ export default function CartScreen() {
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Delivery</Text>
-          <Text style={styles.summaryValue}>${deliveryFee.toFixed(2)}</Text>
+          <Text style={styles.summaryValue}>{deliveryFee === 0 ? 'Free' : `$${deliveryFee.toFixed(2)}`}</Text>
         </View>
         <View style={[styles.summaryRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
