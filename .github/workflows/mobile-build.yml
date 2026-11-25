@@ -12,7 +12,7 @@ on:
         required: true
         default: 'all'
         type: choice
-        options: [all, ios, android]
+        options: [android, all, ios]
 
 jobs:
   build:
@@ -45,7 +45,7 @@ jobs:
 
       - name: Build (production)
         working-directory: customer-app
-        run: eas build --platform ${{ github.event.inputs.platform || 'all' }} --non-interactive --no-wait
+        run: eas build --platform ${{ github.event.inputs.platform || 'android' }} --non-interactive --no-wait
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
