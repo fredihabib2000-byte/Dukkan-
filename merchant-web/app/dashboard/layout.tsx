@@ -1,21 +1,27 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/hooks/useStore';
 import { Sidebar } from '@/components/Sidebar';
 
+const ADMIN_EMAIL = 'fredy.habib@kore.pro';
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { store, loading } = useStore();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.push('/');
+      if (!user) { router.push('/'); return; }
+      if (user.email === ADMIN_EMAIL) setIsAdmin(true);
+      setAuthChecked(true);
     });
   }, [router]);
 
-  if (loading) {
+  if (loading || !authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
@@ -23,7 +29,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  if (!store) {
+  // Admin bypasses store check
+  if (!store && !isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md w-full text-center">
