@@ -12,26 +12,6 @@ export default function OrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [authed, setAuthed] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthed(!!session);
-    });
-  }, []);
-
-  if (authed === false) {
-    return (
-      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', gap: 16 }]}>
-        <Ionicons name="receipt-outline" size={56} color="#D1FAE5" />
-        <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Sign in to see your orders</Text>
-        <Text style={{ color: '#6B7280', textAlign: 'center', paddingHorizontal: 32 }}>Create an account or sign in to track your orders</Text>
-        <TouchableOpacity onPress={() => router.push('/(auth)/login')}
-          style={{ backgroundColor: '#16A34A', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14 }}>
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Sign In</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
   const fetchOrders = async () => {
     const { data } = await supabase
       .from('orders')
@@ -42,11 +22,41 @@ export default function OrdersScreen() {
     setRefreshing(false);
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setAuthed(true);
+        fetchOrders();
+      } else {
+        setAuthed(false);
+        setLoading(false);
+      }
+    });
+  }, []);
 
   const onRefresh = () => { setRefreshing(true); fetchOrders(); };
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} color="#16A34A" />;
+  if (authed === null || loading) {
+    return <ActivityIndicator style={{ flex: 1 }} color="#16A34A" />;
+  }
+
+  if (!authed) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center', gap: 16 }]}>
+        <Ionicons name="receipt-outline" size={56} color="#D1FAE5" />
+        <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Sign in to see your orders</Text>
+        <Text style={{ color: '#6B7280', textAlign: 'center', paddingHorizontal: 32 }}>
+          Create an account or sign in to track your orders
+        </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/login')}
+          style={{ backgroundColor: '#16A34A', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14 }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Sign In</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
