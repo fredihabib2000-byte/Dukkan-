@@ -35,10 +35,14 @@ export default function LoginPage() {
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setError(''); setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
-    router.push('/dashboard');
+    if (data.user?.email === 'fredy.habib@kore.pro') {
+      router.push('/dashboard/admin');
+    } else {
+      router.push('/dashboard');
+    }
   };
 
   return (
