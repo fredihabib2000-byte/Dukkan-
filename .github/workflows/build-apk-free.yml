@@ -1,0 +1,90 @@
+name: Build APK (Free - No EAS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'customer-app/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: customer-app/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        working-directory: customer-app
+        run: npm install
+
+      - name: Expo Prebuild (generate android/ folder)
+        working-directory: customer-app
+        run: npx expo prebuild --platform android --non-interactive
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Make gradlew executable
+        working-directory: customer-app/android
+        run: chmod +x gradlew
+
+      - name: Build Release APK
+        working-directory: customer-app/android
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+      - name: Find APK
+        run: |
+          APK_PATH=$(find customer-app/android -name "*.apk" | grep -i release | head -1)
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+          echo "Found APK: $APK_PATH"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dukkan-release-apk
+          path: ${{ env.APK_PATH }}
+
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./customer-app/package.json').version")
+          BUILD_NUM=${{ github.run_number }}
+          echo "tag=v${VERSION}-build${BUILD_NUM}" >> $GITHUB_OUTPUT
+          echo "name=Dukkan v${VERSION} (Build ${BUILD_NUM})" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.name }}
+          body: |
+            ## Dukkan Customer App
+
+            ### How to install:
+            1. Download `dukkan.apk` below
+            2. Open the file on your Android phone
+            3. Allow "Install from unknown sources" if prompted
+            4. Install and open Dukkan
+
+            **Built from commit:** ${{ github.sha }}
+          files: ${{ env.APK_PATH }}
+          token: ${{ secrets.GITHUB_TOKEN }}
