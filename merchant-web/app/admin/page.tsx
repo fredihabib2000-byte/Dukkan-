@@ -8,12 +8,13 @@ const ADMIN_EMAIL = 'fredihabib2000@gmail.com';
 interface LicenseCode {
   id: string; code: string; store_name_hint: string | null;
   used_by: string | null; used_at: string | null;
-  created_at: string; store_name: string | null;
+  created_at: string; store_name: string | null; expires_at: string | null;
 }
 interface Customer {
   user_id: string; email: string; full_name: string | null;
   phone: string | null; created_at: string;
   store_name: string | null; store_id: string | null; has_license: boolean;
+  license_expires_at: string | null;
 }
 
 type Tab = 'overview' | 'customers' | 'codes';
@@ -35,6 +36,7 @@ export default function AdminPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError]       = useState('');
   const [copied, setCopied]     = useState('');
+  const [resetSent, setResetSent] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -68,6 +70,21 @@ export default function AdminPage() {
   };
   const handleLogout = async () => {
     await supabase.auth.signOut(); router.push('/');
+  };
+
+  const sendReset = async (email: string) => {
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResetSent(email); setTimeout(() => setResetSent(''), 3000);
+  };
+
+  const expiryBadge = (expiresAt: string | null) => {
+    if (!expiresAt) return null;
+    const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000);
+    if (days < 0) return <span className="text-xs bg-red-100 text-red-700 font-semibold px-2 py-0.5 rounded-full">Expired</span>;
+    if (days < 30) return <span className="text-xs bg-orange-100 text-orange-700 font-semibold px-2 py-0.5 rounded-full">Expires in {days}d</span>;
+    return <span className="text-xs text-gray-400">Expires {new Date(expiresAt).toLocaleDateString()}</span>;
   };
 
   const stores    = customers.filter(c => c.has_license);
@@ -196,11 +213,15 @@ export default function AdminPage() {
                         <p className="text-xs text-gray-400 truncate">{c.email}</p>
                         {c.store_name && <p className="text-xs text-green-600 font-medium mt-0.5">🏪 {c.store_name}</p>}
                       </div>
-                      <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-col items-end gap-1.5">
                         <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${c.has_license ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                           {c.has_license ? 'Active Store' : 'No Store'}
                         </span>
-                        <span className="text-xs text-gray-300">{new Date(c.created_at).toLocaleDateString()}</span>
+                        {expiryBadge(c.license_expires_at)}
+                        <button onClick={() => sendReset(c.email)}
+                          className="text-xs text-blue-500 hover:underline">
+                          {resetSent === c.email ? '✓ Email sent' : 'Reset password'}
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -257,7 +278,9 @@ export default function AdminPage() {
                         {c.store_name
                           ? <span className="text-xs text-gray-500 truncate max-w-[130px]">🏪 {c.store_name}</span>
                           : <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">Available</span>}
-                        <span className="text-xs text-gray-300">{new Date(c.created_at).toLocaleDateString()}</span>
+                        {c.expires_at
+                          ? expiryBadge(c.expires_at)
+                          : <span className="text-xs text-gray-300">{new Date(c.created_at).toLocaleDateString()}</span>}
                         {!c.used_by && (
                           <button onClick={() => copy(c.code)} className="text-xs text-brand-600 hover:underline">
                             {copied === c.code ? '✓' : 'Copy'}
