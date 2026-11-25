@@ -1,6 +1,7 @@
 'use client';
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
@@ -54,6 +55,12 @@ export default function LoginPage() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+        <p className="text-center text-sm text-gray-500 mt-6">
+          صاحب متجر جديد?{' '}
+          <Link href="/signup" className="text-brand-600 font-semibold hover:underline">
+            سجّل متجرك الآن
+          </Link>
+        </p>
       </div>
     </div>
   );

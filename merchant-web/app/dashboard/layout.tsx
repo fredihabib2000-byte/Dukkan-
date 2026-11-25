@@ -23,6 +23,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
+  if (!store) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 max-w-md w-full text-center">
+          <div className="text-5xl mb-4">🏪</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">لا يوجد متجر مفعّل</h2>
+          <p className="text-gray-500 mb-6">حسابك غير مرتبط بأي متجر. إذا لديك كود ترخيص، يمكنك تفعيل متجرك.</p>
+          <a href="/signup" className="inline-block bg-brand-600 hover:bg-brand-700 text-white font-bold px-6 py-3 rounded-xl transition">
+            تفعيل المتجر
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar store={store} />
