@@ -37,6 +37,12 @@ jobs:
         working-directory: customer-app
         run: npm install
 
+      - name: Initialize EAS project
+        working-directory: customer-app
+        run: eas init --account fredd11 --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
       - name: Build (production)
         working-directory: customer-app
         run: eas build --platform ${{ github.event.inputs.platform || 'all' }} --non-interactive --no-wait
