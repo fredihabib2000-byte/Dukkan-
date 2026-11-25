@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Store } from '@/lib/types';
 
-const ADMIN_EMAIL = 'fredy.habib@kore.pro';
+const ADMIN_EMAIL = 'fredihabib2000@gmail.com';
 
 const NAV = [
   { href: '/dashboard',            icon: '📊', label: 'Overview' },

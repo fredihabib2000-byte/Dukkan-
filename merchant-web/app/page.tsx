@@ -38,7 +38,7 @@ export default function LoginPage() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) { setError(error.message); return; }
-    if (data.user?.email === 'fredy.habib@kore.pro') {
+    if (data.user?.email === 'fredihabib2000@gmail.com') {
       router.push('/admin');
     } else {
       router.push('/dashboard');

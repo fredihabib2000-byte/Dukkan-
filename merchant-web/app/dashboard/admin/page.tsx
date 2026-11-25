@@ -3,7 +3,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
-const ADMIN_EMAIL = 'fredy.habib@kore.pro';
+const ADMIN_EMAIL = 'fredihabib2000@gmail.com';
 
 interface LicenseCode {
   id: string; code: string; store_name_hint: string | null;

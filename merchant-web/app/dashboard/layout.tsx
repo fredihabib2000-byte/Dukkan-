@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useStore } from '@/hooks/useStore';
 import { Sidebar } from '@/components/Sidebar';
 
-const ADMIN_EMAIL = 'fredy.habib@kore.pro';
+const ADMIN_EMAIL = 'fredihabib2000@gmail.com';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
