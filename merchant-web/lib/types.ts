@@ -40,6 +40,7 @@ export type Product = {
   is_featured: boolean;
   stock_quantity: number;
   track_inventory: boolean;
+  images: string[];
   created_at: string;
 };
 

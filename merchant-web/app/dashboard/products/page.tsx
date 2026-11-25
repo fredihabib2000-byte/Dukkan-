@@ -97,8 +97,17 @@ export default function ProductsPage() {
                 {filtered.map(product => (
                   <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-900">{product.name}</div>
-                      <div className="text-xs text-gray-400">{product.unit}</div>
+                      <div className="flex items-center gap-3">
+                        {product.images?.[0] ? (
+                          <img src={product.images[0]} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-100" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 text-lg">🖼️</div>
+                        )}
+                        <div>
+                          <div className="font-semibold text-gray-900">{product.name}</div>
+                          <div className="text-xs text-gray-400">{product.unit}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500">{catName(product.category_id)}</td>
                     <td className="px-6 py-4 text-right">
@@ -147,12 +156,13 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {modalOpen && (
+      {modalOpen && store && (
         <ProductModal
           product={editing}
           categories={categories}
           onSave={handleSave}
           onClose={() => { setModalOpen(false); setEditing(null); }}
+          storeId={store.id}
         />
       )}
     </div>

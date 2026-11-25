@@ -1,15 +1,17 @@
 'use client';
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useRef } from 'react';
 import { Product, Category } from '@/lib/types';
+import { supabase } from '@/lib/supabase';
 
 type Props = {
   product: Product | null;
   categories: Category[];
   onSave: (data: Partial<Product>) => void;
   onClose: () => void;
+  storeId: string;
 };
 
-export function ProductModal({ product, categories, onSave, onClose }: Props) {
+export function ProductModal({ product, categories, onSave, onClose, storeId }: Props) {
   const [form, setForm] = useState({
     name: product?.name ?? '',
     description: product?.description ?? '',
@@ -25,8 +27,31 @@ export function ProductModal({ product, categories, onSave, onClose }: Props) {
     stock_quantity: product?.stock_quantity?.toString() ?? '0',
   });
 
+  const [images, setImages] = useState<string[]>(product?.images ?? []);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const set = (key: string, val: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: val }));
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    const urls: string[] = [];
+    for (const file of Array.from(files)) {
+      const ext = file.name.split('.').pop();
+      const path = `${storeId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('product-images').upload(path, file);
+      if (!error) {
+        const { data } = supabase.storage.from('product-images').getPublicUrl(path);
+        urls.push(data.publicUrl);
+      }
+    }
+    setImages(prev => [...prev, ...urls]);
+    setUploading(false);
+  };
+
+  const removeImage = (url: string) => setImages(prev => prev.filter(u => u !== url));
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -43,6 +68,7 @@ export function ProductModal({ product, categories, onSave, onClose }: Props) {
       is_available: form.is_available,
       is_featured: form.is_featured,
       stock_quantity: parseInt(form.stock_quantity),
+      images,
     });
   };
 
@@ -55,9 +81,33 @@ export function ProductModal({ product, categories, onSave, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+
+          {/* Image upload */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Product Images</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {images.map(url => (
+                <div key={url} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removeImage(url)}
+                    className="absolute inset-0 bg-black/50 text-white text-lg opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button type="button" onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 hover:border-brand-500 flex flex-col items-center justify-center text-gray-400 hover:text-brand-600 transition text-xs font-semibold gap-1 disabled:opacity-50">
+                {uploading ? <span className="text-lg animate-spin">⟳</span> : <><span className="text-2xl">+</span>Photo</>}
+              </button>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+              onChange={e => handleImageUpload(e.target.files)} />
+          </div>
+
           <Field label="Product Name *">
             <input required value={form.name} onChange={e => set('name', e.target.value)}
-              className={input} placeholder="e.g. Organic Bananas" />
+              className={input} placeholder="e.g. Kinder Delice" />
           </Field>
 
           <Field label="Description">
@@ -126,9 +176,9 @@ export function ProductModal({ product, categories, onSave, onClose }: Props) {
               className="flex-1 border border-gray-200 rounded-xl py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50">
               Cancel
             </button>
-            <button type="submit"
-              className="flex-1 bg-brand-600 text-white rounded-xl py-3 text-sm font-bold hover:bg-brand-700">
-              {product ? 'Save Changes' : 'Add Product'}
+            <button type="submit" disabled={uploading}
+              className="flex-1 bg-brand-600 text-white rounded-xl py-3 text-sm font-bold hover:bg-brand-700 disabled:opacity-50">
+              {uploading ? 'Uploading…' : product ? 'Save Changes' : 'Add Product'}
             </button>
           </div>
         </form>
