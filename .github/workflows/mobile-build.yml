@@ -10,9 +10,15 @@ on:
       platform:
         description: 'Platform to build'
         required: true
-        default: 'all'
+        default: 'android'
         type: choice
         options: [android, all, ios]
+      profile:
+        description: 'Build profile'
+        required: true
+        default: 'production'
+        type: choice
+        options: [production, preview]
 
 jobs:
   build:
@@ -43,9 +49,9 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build (production)
+      - name: Build
         working-directory: customer-app
-        run: eas build --platform ${{ github.event.inputs.platform || 'android' }} --non-interactive --no-wait
+        run: eas build --platform ${{ github.event.inputs.platform || 'android' }} --profile ${{ github.event.inputs.profile || 'production' }} --non-interactive --no-wait
         env:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
