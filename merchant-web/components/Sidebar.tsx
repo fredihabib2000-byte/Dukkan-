@@ -75,9 +75,9 @@ export function Sidebar({ store }: { store: Store | null }) {
       {/* Admin link */}
       {isAdmin && (
         <div className="px-3 pb-2">
-          <Link href="/dashboard/admin"
+          <Link href="/admin"
             className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${
-              pathname === '/dashboard/admin' ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+              pathname === '/admin' ? 'bg-brand-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             <span className="text-base">🔑</span>

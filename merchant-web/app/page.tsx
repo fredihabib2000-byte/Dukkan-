@@ -39,7 +39,7 @@ export default function LoginPage() {
     setLoading(false);
     if (error) { setError(error.message); return; }
     if (data.user?.email === 'fredy.habib@kore.pro') {
-      router.push('/dashboard/admin');
+      router.push('/admin');
     } else {
       router.push('/dashboard');
     }

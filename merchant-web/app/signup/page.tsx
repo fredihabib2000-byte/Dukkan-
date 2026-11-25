@@ -79,7 +79,16 @@ export default function SignupPage() {
       email, password,
       options: { data: { full_name: fullName } },
     });
-    if (signupError) { setError(signupError.message); setLoading(false); return; }
+    if (signupError) {
+      const msg = signupError.message.toLowerCase();
+      if (msg.includes('rate limit') || msg.includes('too many'))
+        setError(lang === 'ar' ? 'حاول مرة ثانية بعد دقيقة' : 'Too many attempts. Please wait a minute and try again.');
+      else if (msg.includes('already registered') || msg.includes('already been registered'))
+        setError(lang === 'ar' ? 'هذا الإيميل مسجّل مسبقاً، سجّل دخولك' : 'This email is already registered. Please Sign In instead.');
+      else
+        setError(signupError.message);
+      setLoading(false); return;
+    }
     if (data.user) setStep('activate');
     setLoading(false);
   };
