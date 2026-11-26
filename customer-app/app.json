@@ -22,7 +22,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#16A34A"
       },
-      "package": "com.dukkan.customer"
+      "package": "com.dukkan.customer",
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "plugins": [
       "expo-router",

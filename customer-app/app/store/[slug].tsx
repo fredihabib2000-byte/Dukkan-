@@ -4,7 +4,6 @@ import {
   TouchableOpacity, ActivityIndicator, RefreshControl,
   TextInput, Image, ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
@@ -23,7 +22,7 @@ export default function StoreScreen() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const cartCount = useCartStore((s) => s.itemCount());
+  const cartCount = useCartStore(s => s.itemCount());
 
   const fetchData = useCallback(async () => {
     const { data: storeData } = await supabase.from('stores').select('*').eq('slug', slug).single();
@@ -49,12 +48,10 @@ export default function StoreScreen() {
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color="#16A34A" />;
   if (!store) return <View style={styles.center}><Text>Store not found</Text></View>;
 
-  // Build sections when "All" is selected
   const filteredProducts = selectedCategory
-    ? products.filter((p) => p.category_id === selectedCategory)
+    ? products.filter(p => p.category_id === selectedCategory)
     : products;
 
-  // Group into pairs for 2-col grid
   const pairProducts = (prods: Product[]): Product[][] => {
     const pairs: Product[][] = [];
     for (let i = 0; i < prods.length; i += 2) pairs.push(prods.slice(i, i + 2));
@@ -63,18 +60,17 @@ export default function StoreScreen() {
 
   const sections: Section[] = !selectedCategory
     ? categories
-        .map((cat) => {
-          const catProds = filteredProducts.filter((p) => p.category_id === cat.id);
+        .map(cat => {
+          const catProds = filteredProducts.filter(p => p.category_id === cat.id);
           return { title: cat.name, catId: cat.id, data: pairProducts(catProds) };
         })
-        .filter((s) => s.data.length > 0)
+        .filter(s => s.data.length > 0)
     : [{ title: '', catId: '', data: pairProducts(filteredProducts) }];
 
-  // If no categories, just show all in one section
   const hasCategories = categories.length > 0;
 
-  return (
-    <View style={styles.container}>
+  const ListHeader = (
+    <>
       {/* Hero banner */}
       <View style={styles.hero}>
         {store.banner_url ? (
@@ -85,17 +81,6 @@ export default function StoreScreen() {
           <View style={[styles.heroBg, { backgroundColor: '#D1FAE5' }]} />
         )}
         <View style={styles.heroOverlay} />
-        {/* Back button */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#111827" />
-        </TouchableOpacity>
-        {/* Cart button */}
-        {cartCount > 0 && (
-          <TouchableOpacity style={styles.cartBtn} onPress={() => router.push('/(tabs)/cart')}>
-            <Ionicons name="cart" size={18} color="#fff" />
-            <Text style={styles.cartCount}>{cartCount}</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       {/* Store info card */}
@@ -140,7 +125,7 @@ export default function StoreScreen() {
         )}
       </View>
 
-      {/* Category tabs - underline style */}
+      {/* Category tabs */}
       {hasCategories && (
         <View style={styles.tabsWrapper}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
@@ -151,7 +136,7 @@ export default function StoreScreen() {
               <Text style={[styles.tabText, !selectedCategory && styles.tabTextActive]}>All</Text>
               {!selectedCategory && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
-            {categories.map((cat) => (
+            {categories.map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[styles.tab, selectedCategory === cat.id && styles.tabActive]}
@@ -164,11 +149,28 @@ export default function StoreScreen() {
           </ScrollView>
         </View>
       )}
+    </>
+  );
 
-      {/* Product sections */}
+  return (
+    <View style={styles.container}>
+      {/* Always-visible back button */}
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={22} color="#111827" />
+      </TouchableOpacity>
+
+      {/* Always-visible cart button */}
+      {cartCount > 0 && (
+        <TouchableOpacity style={styles.cartBtn} onPress={() => router.push('/(tabs)/cart')}>
+          <Ionicons name="cart" size={18} color="#fff" />
+          <Text style={styles.cartCount}>{cartCount}</Text>
+        </TouchableOpacity>
+      )}
+
       <SectionList
         sections={sections}
         keyExtractor={(pair, idx) => idx.toString()}
+        ListHeaderComponent={ListHeader}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#16A34A" />}
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) =>
@@ -184,7 +186,7 @@ export default function StoreScreen() {
         }
         renderItem={({ item: pair }) => (
           <View style={styles.productRow}>
-            {pair.map((product) => (
+            {pair.map(product => (
               <View key={product.id} style={styles.productCell}>
                 <ProductCard
                   product={product}
@@ -212,17 +214,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, paddingTop: 60 },
 
-  hero: { height: 180, position: 'relative' },
+  hero: { height: 200, position: 'relative' },
   heroBg: { width: '100%', height: '100%' },
   heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.08)' },
+
   backBtn: {
-    position: 'absolute', top: 48, left: 14,
+    position: 'absolute', top: 48, left: 14, zIndex: 10,
     width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff',
     justifyContent: 'center', alignItems: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
   cartBtn: {
-    position: 'absolute', top: 48, right: 14,
+    position: 'absolute', top: 48, right: 14, zIndex: 10,
     backgroundColor: '#16A34A', borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 7,
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -230,7 +233,7 @@ const styles = StyleSheet.create({
   cartCount: { color: '#fff', fontWeight: '800', fontSize: 13 },
 
   infoCard: {
-    backgroundColor: '#fff', marginHorizontal: 14, marginTop: -20, borderRadius: 16,
+    backgroundColor: '#fff', marginHorizontal: 14, marginTop: -24, borderRadius: 16,
     padding: 14, flexDirection: 'row', gap: 12,
     shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 6, elevation: 3,
   },
