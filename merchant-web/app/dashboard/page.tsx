@@ -90,7 +90,7 @@ export default function DashboardPage() {
               {recentOrders.map(order => (
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-900">
-                    {(order.profiles as any)?.full_name ?? 'Customer'}
+                    {order.customer_name ?? 'Guest'}
                   </td>
                   <td className="px-6 py-4 text-gray-500">{order.order_items?.length ?? 0} items</td>
                   <td className="px-6 py-4 font-bold">${Number(order.total).toFixed(2)}</td>
