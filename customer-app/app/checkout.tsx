@@ -21,8 +21,15 @@ const uuid = (): string =>
   });
 
 const isValidPhone = (p: string): boolean => {
-  const stripped = p.replace(/[\s\-\(\)]/g, '');
-  return /^(\+?961)?[0-9]{8}$/.test(stripped);
+  const stripped = p.replace(/\s/g, '');
+  return stripped.length === 8 && /^[0-9]{8}$/.test(stripped);
+};
+
+const formatPhone = (text: string): string => {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 5) return `${digits.slice(0, 2)} ${digits.slice(2)}`;
+  return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
 };
 
 const INSTRUCTIONS: { key: Instruction; icon: string; label: string }[] = [
@@ -31,8 +38,6 @@ const INSTRUCTIONS: { key: Instruction; icon: string; label: string }[] = [
   { key: 'call', icon: 'call-outline', label: 'Call on arrival' },
   { key: 'silent', icon: 'notifications-off-outline', label: 'Do not ring' },
 ];
-
-const MINS = [0, 15, 30, 45];
 
 export default function CheckoutScreen() {
   const { items, total, storeId, clearCart } = useCartStore();
@@ -202,8 +207,9 @@ export default function CheckoutScreen() {
               style={styles.phoneInput}
               placeholder="Phone number * (e.g. 71 123 456)"
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(t) => setPhone(formatPhone(t))}
               keyboardType="phone-pad"
+              maxLength={10}
               placeholderTextColor="#9CA3AF"
             />
           </View>
@@ -346,17 +352,20 @@ export default function CheckoutScreen() {
                 <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerHour(h => h === 8 ? 22 : h - 1)}>
                   <Ionicons name="chevron-up" size={30} color="#16A34A" />
                 </TouchableOpacity>
-                <View style={styles.drumValue}>
-                  <Text style={styles.drumPrevNext}>
-                    {(() => { const p = pickerHour === 8 ? 22 : pickerHour - 1; return p > 12 ? p - 12 : p; })()}
-                  </Text>
-                  <Text style={styles.drumCurrent}>
-                    {pickerHour > 12 ? pickerHour - 12 : pickerHour === 0 ? 12 : pickerHour}
-                  </Text>
-                  <Text style={styles.drumPrevNext}>
-                    {(() => { const n = pickerHour === 22 ? 8 : pickerHour + 1; return n > 12 ? n - 12 : n; })()}
-                  </Text>
-                </View>
+                <TextInput
+                  style={styles.drumCurrent}
+                  value={String(pickerHour > 12 ? pickerHour - 12 : pickerHour === 0 ? 12 : pickerHour)}
+                  onChangeText={(t) => {
+                    const n = parseInt(t.replace(/\D/g, '')) || 1;
+                    const c = Math.max(1, Math.min(12, n));
+                    const pm = pickerHour >= 12;
+                    setPickerHour(pm ? (c === 12 ? 12 : c + 12) : (c === 12 ? 0 : c));
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  selectTextOnFocus
+                  textAlign="center"
+                />
                 <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerHour(h => h === 22 ? 8 : h + 1)}>
                   <Ionicons name="chevron-down" size={30} color="#16A34A" />
                 </TouchableOpacity>
@@ -366,15 +375,22 @@ export default function CheckoutScreen() {
 
               {/* Minute column */}
               <View style={styles.drumCol}>
-                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => MINS[(MINS.indexOf(m) + 3) % 4])}>
+                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => (m + 59) % 60)}>
                   <Ionicons name="chevron-up" size={30} color="#16A34A" />
                 </TouchableOpacity>
-                <View style={styles.drumValue}>
-                  <Text style={styles.drumPrevNext}>{String(MINS[(MINS.indexOf(pickerMinute) + 3) % 4]).padStart(2, '0')}</Text>
-                  <Text style={styles.drumCurrent}>{String(pickerMinute).padStart(2, '0')}</Text>
-                  <Text style={styles.drumPrevNext}>{String(MINS[(MINS.indexOf(pickerMinute) + 1) % 4]).padStart(2, '0')}</Text>
-                </View>
-                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => MINS[(MINS.indexOf(m) + 1) % 4])}>
+                <TextInput
+                  style={styles.drumCurrent}
+                  value={String(pickerMinute).padStart(2, '0')}
+                  onChangeText={(t) => {
+                    const n = parseInt(t.replace(/\D/g, '')) || 0;
+                    setPickerMinute(Math.max(0, Math.min(59, n)));
+                  }}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  selectTextOnFocus
+                  textAlign="center"
+                />
+                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => (m + 1) % 60)}>
                   <Ionicons name="chevron-down" size={30} color="#16A34A" />
                 </TouchableOpacity>
               </View>
@@ -477,7 +493,7 @@ const styles = StyleSheet.create({
   drumArrow: { padding: 8 },
   drumValue: { alignItems: 'center', paddingVertical: 4 },
   drumPrevNext: { fontSize: 22, color: '#D1D5DB', fontWeight: '600', lineHeight: 30 },
-  drumCurrent: { fontSize: 56, fontWeight: '800', color: '#111827', lineHeight: 68 },
+  drumCurrent: { fontSize: 56, fontWeight: '800', color: '#111827', lineHeight: 68, textAlign: 'center', width: 80, borderWidth: 0, padding: 0 },
   drumColon: { fontSize: 48, fontWeight: '800', color: '#111827', marginBottom: 8 },
   ampmBtn: { backgroundColor: '#F0FDF4', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 2, borderColor: '#16A34A', marginLeft: 12 },
   ampmText: { fontSize: 20, fontWeight: '800', color: '#16A34A' },
