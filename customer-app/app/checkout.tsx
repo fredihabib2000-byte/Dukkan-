@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, Alert, ActivityIndicator, Platform,
@@ -39,6 +39,49 @@ const INSTRUCTIONS: { key: Instruction; icon: string; label: string }[] = [
   { key: 'silent', icon: 'notifications-off-outline', label: 'Do not ring' },
 ];
 
+const ROLL_H = 56;
+const hours12 = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+const mins60 = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+function DrumRoll({ items, selectedIndex, onSelect }: {
+  items: string[];
+  selectedIndex: number;
+  onSelect: (i: number) => void;
+}) {
+  const ref = useRef<any>(null);
+  return (
+    <View style={{ height: ROLL_H * 3, width: 88, overflow: 'hidden' }}>
+      <View style={{
+        position: 'absolute', top: ROLL_H, left: 0, right: 0, height: ROLL_H,
+        borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#16A34A',
+      }} pointerEvents="none" />
+      <ScrollView
+        ref={ref}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ROLL_H}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingVertical: ROLL_H }}
+        onLayout={() => ref.current?.scrollTo({ y: selectedIndex * ROLL_H, animated: false })}
+        onMomentumScrollEnd={(e) => {
+          const idx = Math.max(0, Math.min(items.length - 1,
+            Math.round(e.nativeEvent.contentOffset.y / ROLL_H)));
+          onSelect(idx);
+        }}
+      >
+        {items.map((item, i) => (
+          <View key={i} style={{ height: ROLL_H, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{
+              fontSize: 38,
+              fontWeight: i === selectedIndex ? '800' : '400',
+              color: i === selectedIndex ? '#111827' : '#D1D5DB',
+            }}>{item}</Text>
+          </View>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function CheckoutScreen() {
   const { items, total, storeId, clearCart } = useCartStore();
   const [name, setName] = useState('');
@@ -56,8 +99,9 @@ export default function CheckoutScreen() {
   const [showNotes, setShowNotes] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [pickerHour, setPickerHour] = useState(12);
-  const [pickerMinute, setPickerMinute] = useState(0);
+  const [pickerHour, setPickerHour] = useState(12);   // 1-12
+  const [pickerMinute, setPickerMinute] = useState(0); // 0-59
+  const [pickerIsPM, setPickerIsPM] = useState(true);
 
   const subtotal = total();
   const orderTotal = subtotal + deliveryFee;
@@ -347,69 +391,33 @@ export default function CheckoutScreen() {
             </View>
 
             <View style={styles.drumContainer}>
-              {/* Hour column */}
-              <View style={styles.drumCol}>
-                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerHour(h => h === 8 ? 22 : h - 1)}>
-                  <Ionicons name="chevron-up" size={30} color="#16A34A" />
-                </TouchableOpacity>
-                <TextInput
-                  style={styles.drumCurrent}
-                  value={String(pickerHour > 12 ? pickerHour - 12 : pickerHour === 0 ? 12 : pickerHour)}
-                  onChangeText={(t) => {
-                    const n = parseInt(t.replace(/\D/g, '')) || 1;
-                    const c = Math.max(1, Math.min(12, n));
-                    const pm = pickerHour >= 12;
-                    setPickerHour(pm ? (c === 12 ? 12 : c + 12) : (c === 12 ? 0 : c));
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  textAlign="center"
-                />
-                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerHour(h => h === 22 ? 8 : h + 1)}>
-                  <Ionicons name="chevron-down" size={30} color="#16A34A" />
-                </TouchableOpacity>
-              </View>
-
+              <DrumRoll
+                items={hours12}
+                selectedIndex={pickerHour - 1}
+                onSelect={(i) => setPickerHour(i + 1)}
+              />
               <Text style={styles.drumColon}>:</Text>
-
-              {/* Minute column */}
-              <View style={styles.drumCol}>
-                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => (m + 59) % 60)}>
-                  <Ionicons name="chevron-up" size={30} color="#16A34A" />
-                </TouchableOpacity>
-                <TextInput
-                  style={styles.drumCurrent}
-                  value={String(pickerMinute).padStart(2, '0')}
-                  onChangeText={(t) => {
-                    const n = parseInt(t.replace(/\D/g, '')) || 0;
-                    setPickerMinute(Math.max(0, Math.min(59, n)));
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                  selectTextOnFocus
-                  textAlign="center"
-                />
-                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => (m + 1) % 60)}>
-                  <Ionicons name="chevron-down" size={30} color="#16A34A" />
-                </TouchableOpacity>
-              </View>
-
-              {/* AM/PM */}
-              <TouchableOpacity
-                style={styles.ampmBtn}
-                onPress={() => setPickerHour(h => h < 12 ? Math.min(h + 12, 22) : Math.max(h - 12, 8))}
-              >
-                <Text style={styles.ampmText}>{pickerHour >= 12 ? 'PM' : 'AM'}</Text>
+              <DrumRoll
+                items={mins60}
+                selectedIndex={pickerMinute}
+                onSelect={setPickerMinute}
+              />
+              <TouchableOpacity style={styles.ampmBtn} onPress={() => setPickerIsPM(p => !p)}>
+                <Text style={styles.ampmText}>{pickerIsPM ? 'PM' : 'AM'}</Text>
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
               style={styles.confirmTimeBtn}
               onPress={() => {
-                const h12 = pickerHour > 12 ? pickerHour - 12 : pickerHour === 0 ? 12 : pickerHour;
-                const ap = pickerHour >= 12 ? 'PM' : 'AM';
-                setScheduledTime(`${h12}:${String(pickerMinute).padStart(2, '0')} ${ap}`);
+                const h24 = pickerIsPM
+                  ? (pickerHour === 12 ? 12 : pickerHour + 12)
+                  : (pickerHour === 12 ? 0 : pickerHour);
+                if (h24 < 8 || h24 > 22) {
+                  Alert.alert('Invalid time', 'Please choose between 8:00 AM and 10:00 PM');
+                  return;
+                }
+                setScheduledTime(`${pickerHour}:${String(pickerMinute).padStart(2, '0')} ${pickerIsPM ? 'PM' : 'AM'}`);
                 setShowTimePicker(false);
               }}
             >
