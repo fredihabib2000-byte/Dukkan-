@@ -381,7 +381,8 @@ export default function CheckoutScreen() {
 
       {/* Time Picker Modal */}
       <Modal visible={showTimePicker} transparent animationType="slide" onRequestClose={() => setShowTimePicker(false)}>
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowTimePicker(false)}>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowTimePicker(false)} />
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Choose Delivery Time</Text>
@@ -424,7 +425,7 @@ export default function CheckoutScreen() {
               <Text style={styles.confirmTimeBtnText}>Confirm Time</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </SafeAreaView>
   );

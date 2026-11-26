@@ -12,21 +12,25 @@ export default function OrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [authed, setAuthed] = useState<boolean | null>(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (userId: string) => {
     const { data } = await supabase
       .from('orders')
       .select('*, store:stores(name, logo_url), order_items(*)')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (data) setOrders(data as Order[]);
     setLoading(false);
     setRefreshing(false);
   };
 
+  const [userId, setUserId] = useState('');
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setAuthed(true);
-        fetchOrders();
+        setUserId(session.user.id);
+        fetchOrders(session.user.id);
       } else {
         setAuthed(false);
         setLoading(false);
@@ -34,7 +38,7 @@ export default function OrdersScreen() {
     });
   }, []);
 
-  const onRefresh = () => { setRefreshing(true); fetchOrders(); };
+  const onRefresh = () => { setRefreshing(true); if (userId) fetchOrders(userId); };
 
   if (authed === null || loading) {
     return <ActivityIndicator style={{ flex: 1 }} color="#16A34A" />;

@@ -70,13 +70,13 @@ export default function ProfileScreen() {
 
       <View style={styles.menu}>
         {[
-          { icon: 'location-outline', label: 'My Addresses' },
-          { icon: 'receipt-outline', label: 'Order History' },
-          { icon: 'notifications-outline', label: 'Notifications' },
-          { icon: 'shield-outline', label: 'Privacy & Security' },
-          { icon: 'help-circle-outline', label: 'Help & Support' },
+          { icon: 'location-outline', label: 'My Addresses', onPress: () => Alert.alert('Coming soon', 'My Addresses will be available soon.') },
+          { icon: 'receipt-outline', label: 'Order History', onPress: () => router.push('/(tabs)/orders') },
+          { icon: 'notifications-outline', label: 'Notifications', onPress: () => Alert.alert('Coming soon', 'Notifications settings will be available soon.') },
+          { icon: 'shield-outline', label: 'Privacy & Security', onPress: () => Alert.alert('Coming soon', 'Privacy & Security will be available soon.') },
+          { icon: 'help-circle-outline', label: 'Help & Support', onPress: () => Alert.alert('Coming soon', 'Help & Support will be available soon.') },
         ].map((item) => (
-          <TouchableOpacity key={item.label} style={styles.menuItem}>
+          <TouchableOpacity key={item.label} style={styles.menuItem} onPress={item.onPress}>
             <View style={styles.menuLeft}>
               <Ionicons name={item.icon as any} size={22} color="#374151" />
               <Text style={styles.menuLabel}>{item.label}</Text>
