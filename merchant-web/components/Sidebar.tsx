@@ -58,7 +58,7 @@ export function Sidebar({ store }: { store: Store | null }) {
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-1">
         {NAV.map(({ href, icon, label }) => {
-          const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+          const active = pathname === href || (href !== '/dashboard' && (pathname?.startsWith(href) ?? false));
           return (
             <Link key={href} href={href}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition ${
