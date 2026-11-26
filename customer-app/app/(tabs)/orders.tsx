@@ -104,11 +104,11 @@ function OrderCard({ order }: { order: Order }) {
       <View style={styles.cardFooter}>
         <Text style={styles.total}>${order.total.toFixed(2)}</Text>
         <View style={styles.cardRight}>
-          {order.status === 'delivering' && (
-            <TouchableOpacity style={styles.trackBtn} onPress={(e) => { e.stopPropagation(); }}>
+          {['pending','confirmed','preparing','delivering'].includes(order.status) && (
+            <View style={styles.trackBtn}>
               <Ionicons name="navigate-outline" size={14} color="#16A34A" />
               <Text style={styles.trackText}>Track</Text>
-            </TouchableOpacity>
+            </View>
           )}
           <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
         </View>

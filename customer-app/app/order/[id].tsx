@@ -32,6 +32,66 @@ type OrderDetail = {
   order_items: OrderItem[];
 };
 
+const STEPS = [
+  { key: 'pending',    icon: 'receipt-outline',      label: 'Order Placed'  },
+  { key: 'confirmed',  icon: 'checkmark-circle-outline', label: 'Confirmed'  },
+  { key: 'preparing',  icon: 'restaurant-outline',   label: 'Preparing'     },
+  { key: 'delivering', icon: 'bicycle-outline',       label: 'On the Way'   },
+  { key: 'delivered',  icon: 'home-outline',          label: 'Delivered'     },
+];
+
+const STATUS_ORDER = ['pending', 'confirmed', 'preparing', 'delivering', 'delivered'];
+
+function StatusTracker({ status }: { status: string }) {
+  if (status === 'cancelled') {
+    return (
+      <View style={tracker.cancelled}>
+        <Ionicons name="close-circle" size={32} color="#EF4444" />
+        <Text style={tracker.cancelledText}>Order Cancelled</Text>
+      </View>
+    );
+  }
+
+  const currentIdx = STATUS_ORDER.indexOf(status);
+
+  return (
+    <View style={tracker.container}>
+      {STEPS.map((step, idx) => {
+        const done    = idx <= currentIdx;
+        const active  = idx === currentIdx;
+        const isLast  = idx === STEPS.length - 1;
+
+        return (
+          <View key={step.key} style={tracker.stepWrap}>
+            {/* Step circle */}
+            <View style={[
+              tracker.circle,
+              done  && tracker.circleDone,
+              active && tracker.circleActive,
+            ]}>
+              <Ionicons
+                name={done ? 'checkmark' : step.icon as any}
+                size={active ? 18 : 16}
+                color={done ? '#fff' : '#D1D5DB'}
+              />
+            </View>
+
+            {/* Line between steps */}
+            {!isLast && (
+              <View style={[tracker.line, idx < currentIdx && tracker.lineDone]} />
+            )}
+
+            {/* Label */}
+            <Text style={[tracker.label, done && tracker.labelDone, active && tracker.labelActive]}>
+              {step.label}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -39,6 +99,8 @@ export default function OrderDetailScreen() {
 
   useEffect(() => {
     if (!id) return;
+
+    // Initial fetch
     supabase
       .from('orders')
       .select('*, store:stores(name, logo_url), order_items(*)')
@@ -48,6 +110,20 @@ export default function OrderDetailScreen() {
         if (data) setOrder(data as OrderDetail);
         setLoading(false);
       });
+
+    // Real-time subscription for status updates
+    const channel = supabase
+      .channel(`order-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${id}` },
+        (payload) => {
+          setOrder(prev => prev ? { ...prev, status: payload.new.status } : prev);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [id]);
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color="#16A34A" />;
@@ -57,8 +133,8 @@ export default function OrderDetailScreen() {
     </SafeAreaView>
   );
 
-  const statusColor = ORDER_STATUS_COLOR[order.status as keyof typeof ORDER_STATUS_COLOR] ?? '#6B7280';
   const statusLabel = ORDER_STATUS_LABEL[order.status as keyof typeof ORDER_STATUS_LABEL] ?? order.status;
+  const statusColor = ORDER_STATUS_COLOR[order.status as keyof typeof ORDER_STATUS_COLOR] ?? '#6B7280';
   const d = new Date(order.created_at);
   const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -67,7 +143,7 @@ export default function OrderDetailScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Store + Status */}
+        {/* Store header */}
         <View style={styles.section}>
           <View style={styles.storeRow}>
             {order.store?.logo_url ? (
@@ -87,6 +163,12 @@ export default function OrderDetailScreen() {
               <Text style={[styles.statusText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
           </View>
+        </View>
+
+        {/* Track Order */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Track Order</Text>
+          <StatusTracker status={order.status} />
         </View>
 
         {/* Items */}
@@ -154,6 +236,40 @@ export default function OrderDetailScreen() {
     </SafeAreaView>
   );
 }
+
+const GREEN = '#16A34A';
+const GRAY  = '#D1D5DB';
+
+const tracker = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  stepWrap: { flex: 1, alignItems: 'center', position: 'relative' },
+  circle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: GRAY,
+  },
+  circleDone:   { backgroundColor: GREEN, borderColor: GREEN },
+  circleActive: { backgroundColor: GREEN, borderColor: GREEN, width: 40, height: 40, borderRadius: 20 },
+  line: {
+    position: 'absolute',
+    top: 18, left: '50%', right: '-50%',
+    height: 3, backgroundColor: GRAY,
+    zIndex: -1,
+  },
+  lineDone: { backgroundColor: GREEN },
+  label: { fontSize: 10, color: '#9CA3AF', fontWeight: '500', marginTop: 6, textAlign: 'center' },
+  labelDone:   { color: '#374151' },
+  labelActive: { color: GREEN, fontWeight: '800' },
+  cancelled:      { alignItems: 'center', paddingVertical: 16, gap: 8 },
+  cancelledText:  { fontSize: 16, fontWeight: '700', color: '#EF4444' },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F6' },
