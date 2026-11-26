@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, Alert, ActivityIndicator, Platform,
-  PermissionsAndroid, Modal, FlatList,
+  PermissionsAndroid, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -32,17 +32,7 @@ const INSTRUCTIONS: { key: Instruction; icon: string; label: string }[] = [
   { key: 'silent', icon: 'notifications-off-outline', label: 'Do not ring' },
 ];
 
-const TIME_SLOTS: string[] = (() => {
-  const slots: string[] = [];
-  for (let mins = 8 * 60; mins <= 22 * 60; mins += 30) {
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    const p = h >= 12 ? 'PM' : 'AM';
-    const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-    slots.push(`${h12}:${m === 0 ? '00' : '30'} ${p}`);
-  }
-  return slots;
-})();
+const MINS = [0, 15, 30, 45];
 
 export default function CheckoutScreen() {
   const { items, total, storeId, clearCart } = useCartStore();
@@ -61,6 +51,8 @@ export default function CheckoutScreen() {
   const [showNotes, setShowNotes] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerHour, setPickerHour] = useState(12);
+  const [pickerMinute, setPickerMinute] = useState(0);
 
   const subtotal = total();
   const orderTotal = subtotal + deliveryFee;
@@ -347,21 +339,66 @@ export default function CheckoutScreen() {
                 <Ionicons name="close" size={22} color="#374151" />
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={TIME_SLOTS}
-              keyExtractor={t => t}
-              contentContainerStyle={{ paddingBottom: 32 }}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[styles.timeSlot, scheduledTime === item && styles.timeSlotActive]}
-                  onPress={() => { setScheduledTime(item); setShowTimePicker(false); }}
-                >
-                  <Ionicons name="time-outline" size={18} color={scheduledTime === item ? '#16A34A' : '#6B7280'} />
-                  <Text style={[styles.timeSlotText, scheduledTime === item && styles.timeSlotTextActive]}>{item}</Text>
-                  {scheduledTime === item && <Ionicons name="checkmark" size={18} color="#16A34A" />}
+
+            <View style={styles.drumContainer}>
+              {/* Hour column */}
+              <View style={styles.drumCol}>
+                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerHour(h => h === 8 ? 22 : h - 1)}>
+                  <Ionicons name="chevron-up" size={30} color="#16A34A" />
                 </TouchableOpacity>
-              )}
-            />
+                <View style={styles.drumValue}>
+                  <Text style={styles.drumPrevNext}>
+                    {(() => { const p = pickerHour === 8 ? 22 : pickerHour - 1; return p > 12 ? p - 12 : p; })()}
+                  </Text>
+                  <Text style={styles.drumCurrent}>
+                    {pickerHour > 12 ? pickerHour - 12 : pickerHour === 0 ? 12 : pickerHour}
+                  </Text>
+                  <Text style={styles.drumPrevNext}>
+                    {(() => { const n = pickerHour === 22 ? 8 : pickerHour + 1; return n > 12 ? n - 12 : n; })()}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerHour(h => h === 22 ? 8 : h + 1)}>
+                  <Ionicons name="chevron-down" size={30} color="#16A34A" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.drumColon}>:</Text>
+
+              {/* Minute column */}
+              <View style={styles.drumCol}>
+                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => MINS[(MINS.indexOf(m) + 3) % 4])}>
+                  <Ionicons name="chevron-up" size={30} color="#16A34A" />
+                </TouchableOpacity>
+                <View style={styles.drumValue}>
+                  <Text style={styles.drumPrevNext}>{String(MINS[(MINS.indexOf(pickerMinute) + 3) % 4]).padStart(2, '0')}</Text>
+                  <Text style={styles.drumCurrent}>{String(pickerMinute).padStart(2, '0')}</Text>
+                  <Text style={styles.drumPrevNext}>{String(MINS[(MINS.indexOf(pickerMinute) + 1) % 4]).padStart(2, '0')}</Text>
+                </View>
+                <TouchableOpacity style={styles.drumArrow} onPress={() => setPickerMinute(m => MINS[(MINS.indexOf(m) + 1) % 4])}>
+                  <Ionicons name="chevron-down" size={30} color="#16A34A" />
+                </TouchableOpacity>
+              </View>
+
+              {/* AM/PM */}
+              <TouchableOpacity
+                style={styles.ampmBtn}
+                onPress={() => setPickerHour(h => h < 12 ? Math.min(h + 12, 22) : Math.max(h - 12, 8))}
+              >
+                <Text style={styles.ampmText}>{pickerHour >= 12 ? 'PM' : 'AM'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.confirmTimeBtn}
+              onPress={() => {
+                const h12 = pickerHour > 12 ? pickerHour - 12 : pickerHour === 0 ? 12 : pickerHour;
+                const ap = pickerHour >= 12 ? 'PM' : 'AM';
+                setScheduledTime(`${h12}:${String(pickerMinute).padStart(2, '0')} ${ap}`);
+                setShowTimePicker(false);
+              }}
+            >
+              <Text style={styles.confirmTimeBtnText}>Confirm Time</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -428,14 +465,22 @@ const styles = StyleSheet.create({
   placeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '70%' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   modalHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
   },
   modalTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
-  timeSlot: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  timeSlotActive: { backgroundColor: '#F0FDF4' },
-  timeSlotText: { flex: 1, fontSize: 15, color: '#374151' },
-  timeSlotTextActive: { color: '#16A34A', fontWeight: '700' },
+
+  drumContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 24, paddingHorizontal: 20, gap: 8 },
+  drumCol: { alignItems: 'center' },
+  drumArrow: { padding: 8 },
+  drumValue: { alignItems: 'center', paddingVertical: 4 },
+  drumPrevNext: { fontSize: 22, color: '#D1D5DB', fontWeight: '600', lineHeight: 30 },
+  drumCurrent: { fontSize: 56, fontWeight: '800', color: '#111827', lineHeight: 68 },
+  drumColon: { fontSize: 48, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  ampmBtn: { backgroundColor: '#F0FDF4', borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14, borderWidth: 2, borderColor: '#16A34A', marginLeft: 12 },
+  ampmText: { fontSize: 20, fontWeight: '800', color: '#16A34A' },
+  confirmTimeBtn: { backgroundColor: '#16A34A', margin: 20, marginTop: 8, padding: 16, borderRadius: 14, alignItems: 'center' },
+  confirmTimeBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

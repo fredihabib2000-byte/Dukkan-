@@ -3,13 +3,14 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -17,6 +18,21 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) Alert.alert('Error', error.message);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Enter email', 'Type your email above then tap Forgot Password.');
+      return;
+    }
+    setResetting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+    setResetting(false);
+    if (error) {
+      Alert.alert('Error', error.message);
+    } else {
+      Alert.alert('Email sent', 'Check your inbox for the password reset link.');
+    }
   };
 
   return (
@@ -50,6 +66,10 @@ export default function LoginScreen() {
           placeholderTextColor="#9CA3AF"
         />
 
+        <TouchableOpacity onPress={handleForgotPassword} disabled={resetting} style={styles.forgotBtn}>
+          <Text style={styles.forgotText}>{resetting ? 'Sending…' : 'Forgot Password?'}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -66,6 +86,10 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </Link>
         </View>
+
+        <TouchableOpacity style={styles.guestBtn} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.guestText}>Browse stores without account →</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -101,7 +125,11 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  forgotBtn: { alignSelf: 'flex-end', marginBottom: 4, marginTop: -4 },
+  forgotText: { color: '#16A34A', fontWeight: '600', fontSize: 14 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
   footerText: { color: '#6B7280' },
   link: { color: '#16A34A', fontWeight: '700' },
+  guestBtn: { marginTop: 20, alignItems: 'center', paddingVertical: 12 },
+  guestText: { color: '#9CA3AF', fontSize: 14, fontWeight: '500' },
 });
