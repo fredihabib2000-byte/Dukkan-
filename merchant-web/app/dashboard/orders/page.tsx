@@ -120,8 +120,10 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
             </span>
             <span className="text-xs text-gray-400">{date}</span>
           </div>
-          <p className="font-bold text-gray-900 mt-2">{customer?.full_name ?? 'Customer'}</p>
-          {customer?.phone && <p className="text-sm text-gray-500">📞 {customer.phone}</p>}
+          <p className="font-bold text-gray-900 mt-2">{order.customer_name ?? customer?.full_name ?? 'Guest'}</p>
+          {(order.customer_phone ?? customer?.phone) && (
+            <p className="text-sm text-gray-500">📞 {order.customer_phone ?? customer?.phone}</p>
+          )}
           {order.delivery_address && <p className="text-sm text-gray-500 mt-1">📍 {order.delivery_address}</p>}
           {order.notes && <p className="text-sm text-amber-600 mt-1 bg-amber-50 px-3 py-1 rounded-lg">💬 {order.notes}</p>}
         </div>

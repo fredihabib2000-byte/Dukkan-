@@ -47,7 +47,9 @@ export type Product = {
 export type Order = {
   id: string;
   store_id: string;
-  user_id: string;
+  user_id: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
   status: OrderStatus;
   subtotal: number;
   delivery_fee: number;

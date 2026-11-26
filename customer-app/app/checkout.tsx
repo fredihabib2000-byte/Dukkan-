@@ -14,6 +14,17 @@ import Geolocation from 'react-native-geolocation-service';
 type DeliveryMode = 'now' | 'schedule';
 type Instruction = 'write' | 'door' | 'call' | 'silent';
 
+const uuid = (): string =>
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+
+const isValidPhone = (p: string): boolean => {
+  const stripped = p.replace(/[\s\-\(\)]/g, '');
+  return /^(\+?961)?[0-9]{8}$/.test(stripped);
+};
+
 const INSTRUCTIONS: { key: Instruction; icon: string; label: string }[] = [
   { key: 'write', icon: 'create-outline', label: 'Write instructions' },
   { key: 'door', icon: 'exit-outline', label: 'Leave at door' },
@@ -35,6 +46,7 @@ const TIME_SLOTS: string[] = (() => {
 
 export default function CheckoutScreen() {
   const { items, total, storeId, clearCart } = useCartStore();
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [building, setBuilding] = useState('');
@@ -109,7 +121,12 @@ export default function CheckoutScreen() {
   };
 
   const handlePlaceOrder = async () => {
+    if (!name.trim()) { Alert.alert('Required', 'Please enter your name'); return; }
     if (!phone.trim()) { Alert.alert('Required', 'Please enter your phone number'); return; }
+    if (!isValidPhone(phone)) {
+      Alert.alert('Invalid phone', 'Enter a valid Lebanese number (e.g. 71 123 456)');
+      return;
+    }
     if (!address.trim()) { Alert.alert('Required', 'Please enter a delivery address'); return; }
     if (deliveryMode === 'schedule' && !scheduledTime) { Alert.alert('Required', 'Please choose a delivery time'); return; }
 
@@ -117,6 +134,7 @@ export default function CheckoutScreen() {
 
     const { data: { user } } = await supabase.auth.getUser();
 
+    const orderId = uuid();
     const fullAddress = [address, building, floor].filter(Boolean).join(', ');
     const instructionNote = instructions.length > 0
       ? `[${instructions.join(', ')}]${notes ? ' ' + notes : ''}`
@@ -125,9 +143,11 @@ export default function CheckoutScreen() {
       ? `Scheduled: ${scheduledTime}${instructionNote ? ' | ' + instructionNote : ''}`
       : instructionNote;
 
-    const { data: order, error } = await supabase.from('orders').insert({
+    const { error } = await supabase.from('orders').insert({
+      id: orderId,
       store_id: storeId,
       user_id: user?.id ?? null,
+      customer_name: name.trim(),
       customer_phone: phone.trim(),
       subtotal,
       delivery_fee: deliveryFee,
@@ -136,9 +156,9 @@ export default function CheckoutScreen() {
       notes: deliveryNote || null,
       delivery_address: fullAddress,
       status: 'pending',
-    }).select().single();
+    });
 
-    if (error || !order) {
+    if (error) {
       setLoading(false);
       Alert.alert('Error', 'Could not place order. Please try again.');
       return;
@@ -146,7 +166,7 @@ export default function CheckoutScreen() {
 
     await supabase.from('order_items').insert(
       items.map(item => ({
-        order_id: order.id,
+        order_id: orderId,
         product_id: item.product.id,
         product_name: item.product.name,
         product_image: item.product.images?.[0] ?? null,
@@ -170,14 +190,25 @@ export default function CheckoutScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Phone */}
+        {/* Contact */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Contact</Text>
+          <View style={styles.phoneRow}>
+            <Ionicons name="person-outline" size={18} color="#6B7280" style={{ marginLeft: 12 }} />
+            <TextInput
+              style={styles.phoneInput}
+              placeholder="Your name *"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
           <View style={styles.phoneRow}>
             <Ionicons name="call-outline" size={18} color="#6B7280" style={{ marginLeft: 12 }} />
             <TextInput
               style={styles.phoneInput}
-              placeholder="Phone number *"
+              placeholder="Phone number * (e.g. 71 123 456)"
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"

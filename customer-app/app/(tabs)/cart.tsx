@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,17 @@ export default function CartScreen() {
         keyExtractor={(item) => item.product.id}
         renderItem={({ item }) => (
           <View style={styles.item}>
+            {item.product.images?.[0] ? (
+              <Image
+                source={{ uri: item.product.images[0] }}
+                style={styles.itemImage}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={[styles.itemImage, styles.itemImagePlaceholder]}>
+                <Ionicons name="image-outline" size={24} color="#D1D5DB" />
+              </View>
+            )}
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{item.product.name}</Text>
               <Text style={styles.itemUnit}>{item.product.unit}</Text>
@@ -102,9 +114,11 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '800', color: '#111827', padding: 20, paddingBottom: 12 },
   list: { paddingHorizontal: 16, paddingBottom: 8 },
   item: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: '#fff', borderRadius: 12, padding: 14,
   },
+  itemImage: { width: 60, height: 60, borderRadius: 10 },
+  itemImagePlaceholder: { backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 15, fontWeight: '600', color: '#111827' },
   itemUnit: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
