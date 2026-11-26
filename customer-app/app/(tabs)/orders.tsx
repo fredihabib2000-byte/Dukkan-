@@ -85,14 +85,16 @@ export default function OrdersScreen() {
 function OrderCard({ order }: { order: Order }) {
   const statusColor = ORDER_STATUS_COLOR[order.status];
   const itemCount = order.order_items?.length ?? 0;
-  const date = new Date(order.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  const d = new Date(order.created_at);
+  const date = d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.7} onPress={() => router.push({ pathname: '/order/[id]', params: { id: order.id } } as any)}>
       <View style={styles.cardHeader}>
         <View>
           <Text style={styles.storeName}>{(order.store as any)?.name ?? 'Store'}</Text>
-          <Text style={styles.date}>{date} · {itemCount} item{itemCount !== 1 ? 's' : ''}</Text>
+          <Text style={styles.date}>{date} · {time} · {itemCount} item{itemCount !== 1 ? 's' : ''}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
           <Text style={[styles.statusText, { color: statusColor }]}>{ORDER_STATUS_LABEL[order.status]}</Text>
@@ -101,14 +103,17 @@ function OrderCard({ order }: { order: Order }) {
       <View style={styles.divider} />
       <View style={styles.cardFooter}>
         <Text style={styles.total}>${order.total.toFixed(2)}</Text>
-        {order.status === 'delivering' && (
-          <TouchableOpacity style={styles.trackBtn}>
-            <Ionicons name="navigate-outline" size={14} color="#16A34A" />
-            <Text style={styles.trackText}>Track order</Text>
-          </TouchableOpacity>
-        )}
+        <View style={styles.cardRight}>
+          {order.status === 'delivering' && (
+            <TouchableOpacity style={styles.trackBtn} onPress={(e) => { e.stopPropagation(); }}>
+              <Ionicons name="navigate-outline" size={14} color="#16A34A" />
+              <Text style={styles.trackText}>Track</Text>
+            </TouchableOpacity>
+          )}
+          <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -127,6 +132,7 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 12, fontWeight: '700' },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   total: { fontSize: 18, fontWeight: '800', color: '#111827' },
   trackBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#D1FAE5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   trackText: { color: '#16A34A', fontWeight: '700', fontSize: 13 },

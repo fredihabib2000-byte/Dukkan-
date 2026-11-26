@@ -70,11 +70,8 @@ export default function ProfileScreen() {
 
       <View style={styles.menu}>
         {[
-          { icon: 'location-outline', label: 'My Addresses', onPress: () => Alert.alert('Coming soon', 'My Addresses will be available soon.') },
           { icon: 'receipt-outline', label: 'Order History', onPress: () => router.push('/(tabs)/orders') },
-          { icon: 'notifications-outline', label: 'Notifications', onPress: () => Alert.alert('Coming soon', 'Notifications settings will be available soon.') },
-          { icon: 'shield-outline', label: 'Privacy & Security', onPress: () => Alert.alert('Coming soon', 'Privacy & Security will be available soon.') },
-          { icon: 'help-circle-outline', label: 'Help & Support', onPress: () => Alert.alert('Coming soon', 'Help & Support will be available soon.') },
+          { icon: 'help-circle-outline', label: 'Help & Support', onPress: () => Alert.alert('Help & Support', 'For support, contact us on WhatsApp:\n+961 70 000 000\n\nOr email: support@dukkan.app') },
         ].map((item) => (
           <TouchableOpacity key={item.label} style={styles.menuItem} onPress={item.onPress}>
             <View style={styles.menuLeft}>
