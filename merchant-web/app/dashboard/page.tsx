@@ -31,7 +31,7 @@ export default function DashboardPage() {
         supabase.from('products').select('id', { count: 'exact' }).eq('store_id', store.id),
         supabase.from('orders').select('id', { count: 'exact' }).eq('store_id', store.id).eq('status', 'pending'),
         supabase.from('orders')
-          .select('*, profiles(full_name, phone), order_items(*)')
+          .select('*, order_items(*)')
           .eq('store_id', store.id)
           .order('created_at', { ascending: false })
           .limit(5),

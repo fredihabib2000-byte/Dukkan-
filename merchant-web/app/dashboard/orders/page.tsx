@@ -39,7 +39,7 @@ export default function OrdersPage() {
     if (!store) return;
     let q = supabase
       .from('orders')
-      .select('*, profiles(full_name, phone), order_items(*)')
+      .select('*, order_items(*)')
       .eq('store_id', store.id)
       .order('created_at', { ascending: false });
     if (tab !== 'all') q = q.eq('status', tab);
@@ -106,7 +106,6 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const nextStatus = STATUS_NEXT[order.status];
-  const customer = (order.profiles as any);
   const date = new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -120,9 +119,9 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
             </span>
             <span className="text-xs text-gray-400">{date}</span>
           </div>
-          <p className="font-bold text-gray-900 mt-2">{order.customer_name ?? customer?.full_name ?? 'Guest'}</p>
-          {(order.customer_phone ?? customer?.phone) && (
-            <p className="text-sm text-gray-500">📞 {order.customer_phone ?? customer?.phone}</p>
+          <p className="font-bold text-gray-900 mt-2">{order.customer_name ?? 'Guest'}</p>
+          {order.customer_phone && (
+            <p className="text-sm text-gray-500">📞 {order.customer_phone}</p>
           )}
           {order.delivery_address && <p className="text-sm text-gray-500 mt-1">📍 {order.delivery_address}</p>}
           {order.notes && <p className="text-sm text-amber-600 mt-1 bg-amber-50 px-3 py-1 rounded-lg">💬 {order.notes}</p>}
