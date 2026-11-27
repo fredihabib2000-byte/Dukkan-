@@ -2,12 +2,27 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet } from 'react-native';
 import { useCartStore } from '@/store/cart';
+import { useWishlistStore } from '@/store/wishlist';
 
 function CartTabIcon({ color, focused }: { color: string; focused: boolean }) {
   const count = useCartStore((s) => s.itemCount());
   return (
     <View>
       <Ionicons name={focused ? 'cart' : 'cart-outline'} size={24} color={color} />
+      {count > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function WishlistTabIcon({ color, focused }: { color: string; focused: boolean }) {
+  const count = useWishlistStore((s) => s.items.length);
+  return (
+    <View>
+      <Ionicons name={focused ? 'heart' : 'heart-outline'} size={24} color={focused ? '#EF4444' : color} />
       {count > 0 && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
@@ -51,6 +66,14 @@ export default function TabsLayout() {
         options={{
           title: 'Cart',
           tabBarIcon: (props) => <CartTabIcon {...props} />,
+        }}
+      />
+      <Tabs.Screen
+        name="wishlist"
+        options={{
+          title: 'Wishlist',
+          tabBarIcon: (props) => <WishlistTabIcon {...props} />,
+          tabBarActiveTintColor: '#EF4444',
         }}
       />
       <Tabs.Screen
