@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { Linking } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { useWishlistStore } from '@/store/wishlist';
 
 const parseHashParams = (url: string): Record<string, string> => {
   const hash = url.split('#')[1] || '';
@@ -13,6 +14,17 @@ const parseHashParams = (url: string): Record<string, string> => {
 };
 
 export default function RootLayout() {
+  const loadWishlist = useWishlistStore(s => s.loadFromSupabase);
+  const clearWishlist = useWishlistStore(s => s.clear);
+
+  useEffect(() => {
+    loadWishlist();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') loadWishlist();
+      if (event === 'SIGNED_OUT') clearWishlist();
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleUrl = async (url: string) => {

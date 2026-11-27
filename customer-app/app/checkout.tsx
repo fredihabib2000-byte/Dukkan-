@@ -105,6 +105,7 @@ export default function CheckoutScreen() {
   const [gpsLat, setGpsLat] = useState<number | null>(null);
   const [gpsLng, setGpsLng] = useState<number | null>(null);
   const [wishNumber, setWishNumber] = useState<string | null>(null);
+  const [storePhone, setStorePhone] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'wish'>('cash');
   const [pointsBalance, setPointsBalance] = useState(0);
   const [freeDeliveryCost, setFreeDeliveryCost] = useState(100);
@@ -118,12 +119,13 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     if (!storeId) return;
-    supabase.from('stores').select('name, delivery_fee, wish_number').eq('id', storeId).single()
+    supabase.from('stores').select('name, delivery_fee, wish_number, phone').eq('id', storeId).single()
       .then(({ data }) => {
         if (data) {
           setStoreName(data.name);
           setDeliveryFee(data.delivery_fee ?? 2.00);
           setWishNumber(data.wish_number ?? null);
+          setStorePhone(data.phone ?? null);
         }
       });
     supabase.rpc('get_store_points_config', { p_store_id: storeId }).then(({ data }) => {
@@ -256,27 +258,42 @@ export default function CheckoutScreen() {
     clearCart();
     setLoading(false);
 
+    const itemsList = items.map(i => `• ${i.product.name} × ${i.quantity}`).join('\n');
+    const mapsLine = gpsLat && gpsLng
+      ? `\n🗺️ Maps: https://www.google.com/maps?q=${gpsLat},${gpsLng}`
+      : '';
+    const storeMsg = encodeURIComponent(
+      `🛒 *New Order — ${storeName}*\n\n${itemsList}\n\nSubtotal: $${subtotal.toFixed(2)}\nDelivery: ${finalDeliveryFee === 0 ? 'Free' : '$' + finalDeliveryFee.toFixed(2)}\n*Total: $${finalTotal.toFixed(2)}*\n\n📍 ${fullAddress}${mapsLine}\n📞 ${name.trim()} — ${phone.trim()}\n💳 ${paymentMethod === 'wish' ? 'Wish' : 'Cash on Delivery'}`
+    );
+
+    const toStore = () => {
+      if (!storePhone) return;
+      const digits = storePhone.replace(/\D/g, '');
+      const num = digits.startsWith('961') ? digits : `961${digits}`;
+      Linking.openURL(`whatsapp://send?phone=${num}&text=${storeMsg}`);
+    };
+
     if (paymentMethod === 'wish' && wishNumber) {
-      const digits = wishNumber.replace(/\D/g, '');
-      const internationalNumber = digits.startsWith('961') ? digits : `961${digits}`;
-      const itemsList = items.map(i => `• ${i.product.name} × ${i.quantity}`).join('\n');
-      const msg = encodeURIComponent(
+      const wDigits = wishNumber.replace(/\D/g, '');
+      const wNum = wDigits.startsWith('961') ? wDigits : `961${wDigits}`;
+      const wishMsg = encodeURIComponent(
         `Hello! I just placed an order at *${storeName}* and paid via Wish 💜\n\n${itemsList}\n\nTotal: $${finalTotal.toFixed(2)}\nName: ${name.trim()}`
       );
-      Alert.alert(
-        '✅ Order Placed!',
-        `Your order from ${storeName} is confirmed.\n\nTap below to send your Wish payment confirmation.`,
-        [
-          { text: 'Send on WhatsApp 💬', onPress: () => { Linking.openURL(`whatsapp://send?phone=${internationalNumber}&text=${msg}`); router.replace('/(tabs)/orders'); } },
-          { text: 'Done', onPress: () => router.replace('/(tabs)/orders') },
-        ]
-      );
+      const buttons: any[] = [
+        { text: 'Confirm Wish Payment 💜', onPress: () => { Linking.openURL(`whatsapp://send?phone=${wNum}&text=${wishMsg}`); router.replace('/(tabs)/orders'); } },
+      ];
+      if (storePhone) {
+        buttons.push({ text: 'Send Order to Store 📲', onPress: () => { toStore(); router.replace('/(tabs)/orders'); } });
+      }
+      buttons.push({ text: 'Done', onPress: () => router.replace('/(tabs)/orders') });
+      Alert.alert('✅ Order Placed!', `Your order from ${storeName} is confirmed.`, buttons);
     } else {
-      Alert.alert(
-        '✅ Order Placed!',
-        `Your order from ${storeName} has been placed successfully.`,
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)/orders') }]
-      );
+      const buttons: any[] = [];
+      if (storePhone) {
+        buttons.push({ text: 'Send to Store on WhatsApp 📲', onPress: () => { toStore(); router.replace('/(tabs)/orders'); } });
+      }
+      buttons.push({ text: 'OK', onPress: () => router.replace('/(tabs)/orders') });
+      Alert.alert('✅ Order Placed!', `Your order from ${storeName} has been placed successfully.`, buttons);
     }
   };
 
