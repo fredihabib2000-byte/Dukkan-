@@ -189,10 +189,6 @@ export default function AdminPage() {
         </div>
 
         <div className="px-3 pb-4 space-y-1 border-t border-gray-100 pt-3">
-          <button onClick={() => router.push('/dashboard')}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-green-50 hover:text-green-700 transition">
-            <span>🏪</span> My Store
-          </button>
           <button onClick={handleLogout}
             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-red-50 hover:text-red-600 transition">
             <span>🚪</span> Logout

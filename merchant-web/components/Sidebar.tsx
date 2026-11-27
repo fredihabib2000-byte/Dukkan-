@@ -1,11 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Store } from '@/lib/types';
-
-const ADMIN_EMAIL = 'fredihabib2000@gmail.com';
 
 const NAV = [
   { href: '/dashboard',            icon: '📊', label: 'Overview' },
@@ -18,13 +14,6 @@ const NAV = [
 export function Sidebar({ store }: { store: Store | null }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.email === ADMIN_EMAIL) setIsAdmin(true);
-    });
-  }, []);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -74,13 +63,6 @@ export function Sidebar({ store }: { store: Store | null }) {
 
       {/* Sign out */}
       <div className="p-4 border-t border-gray-100 space-y-1">
-        {isAdmin && (
-          <Link href="/admin"
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-100 transition"
-          >
-            <span>⚙️</span> Admin Portal
-          </Link>
-        )}
         <button onClick={handleSignOut}
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition"
         >
