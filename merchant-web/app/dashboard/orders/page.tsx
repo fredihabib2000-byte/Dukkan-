@@ -50,12 +50,33 @@ export default function OrdersPage() {
 
   useEffect(() => { fetchOrders(); }, [store, tab]);
 
+  const PUSH_MESSAGES: Partial<Record<OrderStatus, { title: string; body: string }>> = {
+    confirmed:  { title: '✅ Order Confirmed!',   body: 'Your order has been confirmed and will be prepared shortly.' },
+    preparing:  { title: '👨‍🍳 Being Prepared',    body: 'The store is now preparing your order.' },
+    delivering: { title: '🚴 On the Way!',         body: 'Your order is out for delivery. Hang tight!' },
+    delivered:  { title: '📦 Order Delivered!',    body: 'Your order has arrived. Enjoy!' },
+  };
+
   const advanceStatus = async (order: Order) => {
     const next = STATUS_NEXT[order.status];
     if (!next) return;
     setUpdating(order.id);
     await supabase.from('orders').update({ status: next }).eq('id', order.id);
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: next } : o));
+
+    // Send push notification to customer
+    try {
+      const { data: token } = await supabase.rpc('get_push_token_for_order', { p_order_id: order.id });
+      const msg = PUSH_MESSAGES[next];
+      if (token && msg) {
+        fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ to: token, title: msg.title, body: msg.body, sound: 'default', priority: 'high' }),
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
     setUpdating(null);
   };
 
@@ -169,7 +190,17 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
             <tbody className="divide-y divide-gray-100">
               {order.order_items.map(item => (
                 <tr key={item.id}>
-                  <td className="py-2 font-medium">{item.product_name}</td>
+                  <td className="py-2">
+                    <div className="flex items-center gap-3">
+                      {item.product_image ? (
+                        <img src={item.product_image} alt={item.product_name}
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-100" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 text-lg">🛍️</div>
+                      )}
+                      <span className="font-medium text-gray-800">{item.product_name}</span>
+                    </div>
+                  </td>
                   <td className="py-2 text-right text-gray-500">× {item.quantity}</td>
                   <td className="py-2 text-right text-gray-500">${Number(item.unit_price).toFixed(2)}</td>
                   <td className="py-2 text-right font-bold">${Number(item.total).toFixed(2)}</td>
