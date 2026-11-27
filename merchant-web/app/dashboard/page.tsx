@@ -4,36 +4,49 @@ import { supabase } from '@/lib/supabase';
 import { useStore } from '@/hooks/useStore';
 import { ORDER_STATUS_LABEL, STATUS_COLOR, type Order } from '@/lib/types';
 
-function LicenseBanner({ expiresAt }: { expiresAt: string | null }) {
+function LicenseCard({ expiresAt, activatedAt }: { expiresAt: string | null; activatedAt: string | null }) {
   if (!expiresAt) return null;
   const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
-  if (days > 30) return null;
+  const activatedStr = activatedAt
+    ? new Date(activatedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+    : null;
+  const expiryStr = new Date(expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
   if (days < 0)
     return (
       <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center gap-3">
         <span className="text-2xl">🔴</span>
         <div>
-          <p className="font-bold text-red-700">Your license has expired</p>
-          <p className="text-sm text-red-500 mt-0.5">Please contact support to renew your Dukkan subscription.</p>
+          <p className="font-bold text-red-700">License expired</p>
+          <p className="text-sm text-red-500 mt-0.5">Contact your Dukkan provider to renew.</p>
         </div>
       </div>
     );
-  if (days <= 7)
-    return (
-      <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center gap-3">
-        <span className="text-2xl animate-pulse">⚠️</span>
-        <div>
-          <p className="font-bold text-red-700">License expires in {days} day{days !== 1 ? 's' : ''}!</p>
-          <p className="text-sm text-red-500 mt-0.5">Contact your Dukkan provider to renew before it expires.</p>
-        </div>
-      </div>
-    );
+
+  const color = days <= 7 ? 'red' : days <= 30 ? 'orange' : 'green';
+  const colorMap = {
+    red:    { bg:'bg-red-50',    border:'border-red-200',    text:'text-red-700',    sub:'text-red-500',    bar:'bg-red-500',    pill:'bg-red-100 text-red-700'    },
+    orange: { bg:'bg-orange-50', border:'border-orange-200', text:'text-orange-700', sub:'text-orange-500', bar:'bg-orange-500', pill:'bg-orange-100 text-orange-700' },
+    green:  { bg:'bg-green-50',  border:'border-green-200',  text:'text-green-800',  sub:'text-green-600',  bar:'bg-green-500',  pill:'bg-green-100 text-green-700'  },
+  }[color];
+
   return (
-    <div className="mb-6 bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 flex items-center gap-3">
-      <span className="text-2xl">🔑</span>
-      <div>
-        <p className="font-bold text-orange-700">License expires in {days} days</p>
-        <p className="text-sm text-orange-500 mt-0.5">Expires on {new Date(expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}.</p>
+    <div className={`mb-6 ${colorMap.bg} border ${colorMap.border} rounded-2xl px-5 py-4`}>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <span className={`text-2xl ${days <= 7 ? 'animate-pulse' : ''}`}>🔑</span>
+          <div>
+            <p className={`font-bold ${colorMap.text}`}>
+              {days <= 7 ? `⚠️ Expires in ${days} day${days !== 1 ? 's' : ''}!` : `License active — ${days} days remaining`}
+            </p>
+            <p className={`text-xs ${colorMap.sub} mt-0.5`}>
+              {activatedStr && `Activated ${activatedStr} · `}Expires {expiryStr}
+            </p>
+          </div>
+        </div>
+        <span className={`text-sm font-black px-3 py-1 rounded-full ${colorMap.pill}`}>
+          {days}d
+        </span>
       </div>
     </div>
   );
@@ -57,7 +70,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ orders: 0, revenue: 0, products: 0, pending: 0 });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [licenseExpiresAt, setLicenseExpiresAt] = useState<string | null>(null);
+  const [licenseExpiresAt, setLicenseExpiresAt]   = useState<string | null>(null);
+  const [licenseActivatedAt, setLicenseActivatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!store) return;
@@ -66,10 +80,11 @@ export default function DashboardPage() {
       if (user) {
         const { data: lc } = await supabase
           .from('license_codes')
-          .select('expires_at')
+          .select('expires_at, used_at')
           .eq('used_by', user.id)
           .maybeSingle();
         if (lc?.expires_at) setLicenseExpiresAt(lc.expires_at);
+        if (lc?.used_at)    setLicenseActivatedAt(lc.used_at);
       }
       const [ordersRes, productsRes, pendingRes, recentRes] = await Promise.all([
         supabase.from('orders').select('total').eq('store_id', store.id).eq('status', 'delivered'),
@@ -104,7 +119,7 @@ export default function DashboardPage() {
         <p className="text-gray-500 mt-1">Welcome back, {store?.name ?? 'store owner'} 👋</p>
       </div>
 
-      <LicenseBanner expiresAt={licenseExpiresAt} />
+      <LicenseCard expiresAt={licenseExpiresAt} activatedAt={licenseActivatedAt} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
