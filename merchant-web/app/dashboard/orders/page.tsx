@@ -124,6 +124,11 @@ export default function OrdersPage() {
   );
 }
 
+function cleanNote(note: string | null) {
+  if (!note) return null;
+  return note.replace(/^\[write(?:,\s*)?]?\s*/i, '').replace(/\[write(?:,\s*)?]/gi, '').trim() || null;
+}
+
 function OrderCard({ order, onAdvance, onCancel, updating }: {
   order: Order;
   onAdvance: (o: Order) => void;
@@ -133,6 +138,18 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
   const [expanded, setExpanded] = useState(false);
   const nextStatus = STATUS_NEXT[order.status];
   const date = new Date(order.created_at).toLocaleString('en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  const mapsUrl = order.delivery_lat && order.delivery_lng
+    ? `https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}`
+    : order.delivery_address
+      ? `https://www.google.com/maps/search/${encodeURIComponent(order.delivery_address)}`
+      : null;
+
+  const whatsappMsg = encodeURIComponent(
+    `🚴 Delivery for ${order.customer_name ?? 'customer'}\n📍 Address: ${order.delivery_address ?? ''}${order.delivery_lat ? `\n🗺️ Maps: https://www.google.com/maps?q=${order.delivery_lat},${order.delivery_lng}` : ''}\n📞 Customer: ${order.customer_phone ?? ''}`
+  );
+
+  const note = cleanNote(order.notes);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -149,8 +166,24 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
           {order.customer_phone && (
             <p className="text-sm text-gray-500">📞 {order.customer_phone}</p>
           )}
-          {order.delivery_address && <p className="text-sm text-gray-500 mt-1">📍 {order.delivery_address}</p>}
-          {order.notes && <p className="text-sm text-amber-600 mt-1 bg-amber-50 px-3 py-1 rounded-lg">💬 {order.notes}</p>}
+          {/* Location row */}
+          {(order.delivery_address || mapsUrl) && (
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {mapsUrl ? (
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                  📍 {order.delivery_address || 'View on Maps'}
+                </a>
+              ) : (
+                <p className="text-sm text-gray-500">📍 {order.delivery_address}</p>
+              )}
+              <a href={`https://api.whatsapp.com/send?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-green-100 text-green-700 text-xs font-semibold hover:bg-green-200 transition">
+                <span>📲</span> Send to driver
+              </a>
+            </div>
+          )}
+          {note && <p className="text-sm text-amber-600 mt-1 bg-amber-50 px-3 py-1 rounded-lg">💬 {note}</p>}
         </div>
 
         {/* Right: total + actions */}

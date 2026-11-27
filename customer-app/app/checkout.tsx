@@ -102,6 +102,8 @@ export default function CheckoutScreen() {
   const [pickerHour, setPickerHour] = useState(12);   // 1-12
   const [pickerMinute, setPickerMinute] = useState(0); // 0-59
   const [pickerIsPM, setPickerIsPM] = useState(true);
+  const [gpsLat, setGpsLat] = useState<number | null>(null);
+  const [gpsLng, setGpsLng] = useState<number | null>(null);
   const [pointsBalance, setPointsBalance] = useState(0);
   const [freeDeliveryCost, setFreeDeliveryCost] = useState(100);
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
@@ -142,6 +144,8 @@ export default function CheckoutScreen() {
       }
       Geolocation.getCurrentPosition(
         async ({ coords: { latitude, longitude } }) => {
+          setGpsLat(latitude);
+          setGpsLng(longitude);
           try {
             const res = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
@@ -189,9 +193,10 @@ export default function CheckoutScreen() {
 
     const orderId = uuid();
     const fullAddress = [address, building, floor].filter(Boolean).join(', ');
-    const instructionNote = instructions.length > 0
-      ? `[${instructions.join(', ')}]${notes ? ' ' + notes : ''}`
-      : notes;
+    const otherInstructions = instructions.filter(k => k !== 'write');
+    const instructionNote = otherInstructions.length > 0
+      ? `[${otherInstructions.join(', ')}]${notes ? ' ' + notes : ''}`
+      : notes || null;
     const deliveryNote = deliveryMode === 'schedule' && scheduledTime
       ? `Scheduled: ${scheduledTime}${instructionNote ? ' | ' + instructionNote : ''}`
       : instructionNote;
@@ -218,6 +223,8 @@ export default function CheckoutScreen() {
       total: finalTotal,
       notes: deliveryNote || null,
       delivery_address: fullAddress,
+      delivery_lat: gpsLat,
+      delivery_lng: gpsLng,
       status: 'pending',
     });
 

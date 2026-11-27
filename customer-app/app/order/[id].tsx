@@ -210,7 +210,9 @@ export default function OrderDetailScreen() {
           {order.notes ? (
             <View style={styles.infoRow}>
               <Ionicons name="document-text-outline" size={16} color="#6B7280" />
-              <Text style={styles.infoText}>{order.notes}</Text>
+              <Text style={styles.infoText}>
+                {order.notes.replace(/^\[write(?:,\s*)?]?\s*/i, '').replace(/\[write(?:,\s*)?]/gi, '').trim()}
+              </Text>
             </View>
           ) : null}
         </View>

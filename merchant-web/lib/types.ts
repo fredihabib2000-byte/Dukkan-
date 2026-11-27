@@ -57,6 +57,8 @@ export type Order = {
   total: number;
   notes: string | null;
   delivery_address: string | null;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
   created_at: string;
   profiles?: { full_name: string | null; phone: string | null };
   order_items?: OrderItem[];
