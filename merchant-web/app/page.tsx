@@ -36,12 +36,27 @@ export default function LoginPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setError(error.message); setLoading(false); return; }
+    const user = data.user;
+    if (!user) { setLoading(false); return; }
+
+    // Admin → admin portal
+    if (user.email === 'fredihabib2000@gmail.com') {
+      router.push('/admin'); return;
+    }
+
+    // Check if merchant already has an activated store
+    const { data: staff } = await supabase
+      .from('store_staff')
+      .select('store_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     setLoading(false);
-    if (error) { setError(error.message); return; }
-    if (data.user?.email === 'fredihabib2000@gmail.com') {
-      router.push('/admin');
+    if (staff?.store_id) {
+      router.push('/dashboard');   // has a store → go to merchant dashboard
     } else {
-      router.push('/dashboard');
+      router.push('/signup');      // no store yet → activate with license code
     }
   };
 
