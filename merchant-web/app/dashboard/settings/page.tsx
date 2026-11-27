@@ -10,6 +10,7 @@ export default function SettingsPage() {
     delivery_time_min: 15, delivery_time_max: 30,
     delivery_fee: 2, min_order_amount: 0,
     free_delivery_above: '', is_active: true, currency: 'USD',
+    wish_number: '',
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -29,6 +30,7 @@ export default function SettingsPage() {
       free_delivery_above: store.free_delivery_above?.toString() ?? '',
       is_active: store.is_active ?? true,
       currency: store.currency ?? 'USD',
+      wish_number: store.wish_number ?? '',
     });
   }, [store]);
 
@@ -52,6 +54,7 @@ export default function SettingsPage() {
       free_delivery_above: form.free_delivery_above ? parseFloat(form.free_delivery_above) : null,
       is_active: form.is_active,
       currency: form.currency,
+      wish_number: form.wish_number || null,
     }).eq('id', store.id);
     setSaving(false);
     setSaved(true);
@@ -112,6 +115,26 @@ export default function SettingsPage() {
           <Field label="Free delivery above ($) — leave empty to disable">
             <input type="number" step="0.01" min="0" value={form.free_delivery_above} onChange={e => set('free_delivery_above', e.target.value)}
               className={inp} placeholder="e.g. 35" />
+          </Field>
+        </Section>
+
+        {/* Payment */}
+        <Section title="Payment Methods">
+          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl mb-2">
+            <span className="text-2xl">💵</span>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm">Cash on Delivery</p>
+              <p className="text-xs text-gray-500">Always enabled — customers can pay at the door</p>
+            </div>
+            <span className="ml-auto text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Active</span>
+          </div>
+          <Field label="Wish Number (optional)">
+            <input value={form.wish_number} onChange={e => set('wish_number', e.target.value)}
+              className={inp} placeholder="e.g. 71 123 456" />
+            <p className="text-xs text-gray-400 mt-1">
+              Customers can pay via Wish and send you confirmation on WhatsApp to this number.
+              Leave empty to hide the Wish option.
+            </p>
           </Field>
         </Section>
 

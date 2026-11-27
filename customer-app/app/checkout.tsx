@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, Alert, ActivityIndicator, Platform,
-  PermissionsAndroid, Modal,
+  PermissionsAndroid, Modal, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -104,6 +104,8 @@ export default function CheckoutScreen() {
   const [pickerIsPM, setPickerIsPM] = useState(true);
   const [gpsLat, setGpsLat] = useState<number | null>(null);
   const [gpsLng, setGpsLng] = useState<number | null>(null);
+  const [wishNumber, setWishNumber] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'wish'>('cash');
   const [pointsBalance, setPointsBalance] = useState(0);
   const [freeDeliveryCost, setFreeDeliveryCost] = useState(100);
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
@@ -116,9 +118,13 @@ export default function CheckoutScreen() {
 
   useEffect(() => {
     if (!storeId) return;
-    supabase.from('stores').select('name, delivery_fee').eq('id', storeId).single()
+    supabase.from('stores').select('name, delivery_fee, wish_number').eq('id', storeId).single()
       .then(({ data }) => {
-        if (data) { setStoreName(data.name); setDeliveryFee(data.delivery_fee ?? 2.00); }
+        if (data) {
+          setStoreName(data.name);
+          setDeliveryFee(data.delivery_fee ?? 2.00);
+          setWishNumber(data.wish_number ?? null);
+        }
       });
     supabase.rpc('get_store_points_config', { p_store_id: storeId }).then(({ data }) => {
       if (data) { setLoyaltyEnabled(data.enabled); setFreeDeliveryCost(data.free_delivery_cost); }
@@ -225,6 +231,7 @@ export default function CheckoutScreen() {
       delivery_address: fullAddress,
       delivery_lat: gpsLat,
       delivery_lng: gpsLng,
+      payment_method: paymentMethod,
       status: 'pending',
     });
 
@@ -249,11 +256,28 @@ export default function CheckoutScreen() {
     clearCart();
     setLoading(false);
 
-    Alert.alert(
-      'Order Placed!',
-      `Your order from ${storeName} has been placed successfully.`,
-      [{ text: 'OK', onPress: () => router.replace('/(tabs)/orders') }]
-    );
+    if (paymentMethod === 'wish' && wishNumber) {
+      const digits = wishNumber.replace(/\D/g, '');
+      const internationalNumber = digits.startsWith('961') ? digits : `961${digits}`;
+      const itemsList = items.map(i => `• ${i.product.name} × ${i.quantity}`).join('\n');
+      const msg = encodeURIComponent(
+        `Hello! I just placed an order at *${storeName}* and paid via Wish 💜\n\n${itemsList}\n\nTotal: $${finalTotal.toFixed(2)}\nName: ${name.trim()}`
+      );
+      Alert.alert(
+        '✅ Order Placed!',
+        `Your order from ${storeName} is confirmed.\n\nTap below to send your Wish payment confirmation.`,
+        [
+          { text: 'Send on WhatsApp 💬', onPress: () => { Linking.openURL(`whatsapp://send?phone=${internationalNumber}&text=${msg}`); router.replace('/(tabs)/orders'); } },
+          { text: 'Done', onPress: () => router.replace('/(tabs)/orders') },
+        ]
+      );
+    } else {
+      Alert.alert(
+        '✅ Order Placed!',
+        `Your order from ${storeName} has been placed successfully.`,
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)/orders') }]
+      );
+    }
   };
 
   return (
@@ -368,6 +392,42 @@ export default function CheckoutScreen() {
               numberOfLines={3}
               placeholderTextColor="#9CA3AF"
             />
+          )}
+        </View>
+
+        {/* Payment Method */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Payment Method</Text>
+          <View style={styles.modeRow}>
+            <TouchableOpacity
+              style={[styles.modeBtn, paymentMethod === 'cash' && styles.modeBtnActive]}
+              onPress={() => setPaymentMethod('cash')}
+            >
+              <Text style={[styles.modePrimary, paymentMethod === 'cash' && styles.modeTextActive]}>💵 Cash</Text>
+              <Text style={[styles.modeSecondary, paymentMethod === 'cash' && { color: '#16A34A' }]}>Pay on delivery</Text>
+            </TouchableOpacity>
+            {wishNumber && (
+              <TouchableOpacity
+                style={[styles.modeBtn, paymentMethod === 'wish' && styles.modeBtnActive]}
+                onPress={() => setPaymentMethod('wish')}
+              >
+                <Text style={[styles.modePrimary, paymentMethod === 'wish' && styles.modeTextActive]}>💜 Wish</Text>
+                <Text style={[styles.modeSecondary, paymentMethod === 'wish' && { color: '#16A34A' }]}>Online transfer</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {paymentMethod === 'wish' && wishNumber && (
+            <View style={{ marginTop: 10, padding: 12, backgroundColor: '#F5F3FF', borderRadius: 12, borderWidth: 1, borderColor: '#DDD6FE' }}>
+              <Text style={{ fontSize: 13, color: '#6D28D9', fontWeight: '600' }}>
+                Transfer the total to Wish number:
+              </Text>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#5B21B6', marginTop: 4, letterSpacing: 1 }}>
+                {wishNumber}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#8B5CF6', marginTop: 4 }}>
+                After placing the order, you'll be asked to send confirmation on WhatsApp.
+              </Text>
+            </View>
           )}
         </View>
 

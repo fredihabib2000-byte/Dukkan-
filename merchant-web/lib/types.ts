@@ -14,6 +14,7 @@ export type Store = {
   free_delivery_above: number | null;
   currency: string;
   is_active: boolean;
+  wish_number: string | null;
 };
 
 export type Category = {
@@ -59,6 +60,7 @@ export type Order = {
   delivery_address: string | null;
   delivery_lat: number | null;
   delivery_lng: number | null;
+  payment_method: string;
   created_at: string;
   profiles?: { full_name: string | null; phone: string | null };
   order_items?: OrderItem[];

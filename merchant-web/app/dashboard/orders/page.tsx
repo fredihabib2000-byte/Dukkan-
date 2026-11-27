@@ -162,7 +162,14 @@ function OrderCard({ order, onAdvance, onCancel, updating }: {
             </span>
             <span className="text-xs text-gray-400">{date}</span>
           </div>
-          <p className="font-bold text-gray-900 mt-2">{order.customer_name ?? 'Guest'}</p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <p className="font-bold text-gray-900">{order.customer_name ?? 'Guest'}</p>
+            {order.payment_method === 'wish' ? (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">💜 Wish</span>
+            ) : (
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">💵 Cash</span>
+            )}
+          </div>
           {order.customer_phone && (
             <p className="text-sm text-gray-500">📞 {order.customer_phone}</p>
           )}
