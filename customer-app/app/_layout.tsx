@@ -32,9 +32,8 @@ async function registerPushToken() {
       });
     }
 
-    const { data: token } = await Notifications.getExpoPushTokenAsync({
-      projectId: 'dukkan-customer',
-    });
+    const tokenResult = await Notifications.getExpoPushTokenAsync().catch(() => null);
+    const token = tokenResult?.data;
     if (!token) return;
 
     const { data: { user } } = await supabase.auth.getUser();
