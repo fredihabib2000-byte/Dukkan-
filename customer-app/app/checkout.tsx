@@ -102,20 +102,32 @@ export default function CheckoutScreen() {
   const [pickerHour, setPickerHour] = useState(12);   // 1-12
   const [pickerMinute, setPickerMinute] = useState(0); // 0-59
   const [pickerIsPM, setPickerIsPM] = useState(true);
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [freeDeliveryCost, setFreeDeliveryCost] = useState(100);
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
+  const [redeemPoints, setRedeemPoints] = useState(false);
+  const [pointsRedeemed, setPointsRedeemed] = useState(false);
 
   const subtotal = total();
-  const orderTotal = subtotal + deliveryFee;
+  const effectiveDeliveryFee = redeemPoints && pointsBalance >= freeDeliveryCost ? 0 : deliveryFee;
+  const orderTotal = subtotal + effectiveDeliveryFee;
 
   useEffect(() => {
-    if (storeId) {
-      supabase.from('stores').select('name, delivery_fee').eq('id', storeId).single()
-        .then(({ data }) => {
-          if (data) {
-            setStoreName(data.name);
-            setDeliveryFee(data.delivery_fee ?? 2.00);
-          }
+    if (!storeId) return;
+    supabase.from('stores').select('name, delivery_fee').eq('id', storeId).single()
+      .then(({ data }) => {
+        if (data) { setStoreName(data.name); setDeliveryFee(data.delivery_fee ?? 2.00); }
+      });
+    supabase.rpc('get_store_points_config', { p_store_id: storeId }).then(({ data }) => {
+      if (data) { setLoyaltyEnabled(data.enabled); setFreeDeliveryCost(data.free_delivery_cost); }
+    });
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase.rpc('get_my_points', { p_store_id: storeId }).then(({ data }) => {
+          if (typeof data === 'number') setPointsBalance(data);
         });
-    }
+      }
+    });
   }, [storeId]);
 
   const handleGetLocation = async () => {
@@ -184,6 +196,16 @@ export default function CheckoutScreen() {
       ? `Scheduled: ${scheduledTime}${instructionNote ? ' | ' + instructionNote : ''}`
       : instructionNote;
 
+    // Redeem points for free delivery if chosen
+    let appliedFreeDelivery = false;
+    if (redeemPoints && loyaltyEnabled && pointsBalance >= freeDeliveryCost && user?.id) {
+      const { data: rd } = await supabase.rpc('redeem_points_free_delivery', { p_store_id: storeId });
+      if (rd?.success) appliedFreeDelivery = true;
+    }
+
+    const finalDeliveryFee = appliedFreeDelivery ? 0 : deliveryFee;
+    const finalTotal = subtotal + finalDeliveryFee;
+
     const { error } = await supabase.from('orders').insert({
       id: orderId,
       store_id: storeId,
@@ -191,9 +213,9 @@ export default function CheckoutScreen() {
       customer_name: name.trim(),
       customer_phone: phone.trim(),
       subtotal,
-      delivery_fee: deliveryFee,
+      delivery_fee: finalDeliveryFee,
       discount_amount: 0,
-      total: orderTotal,
+      total: finalTotal,
       notes: deliveryNote || null,
       delivery_address: fullAddress,
       status: 'pending',
@@ -342,6 +364,41 @@ export default function CheckoutScreen() {
           )}
         </View>
 
+        {/* Loyalty Points */}
+        {loyaltyEnabled && pointsBalance > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Points</Text>
+            <View style={[styles.phoneRow, { justifyContent: 'space-between', paddingRight: 12 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingLeft: 12 }}>
+                <Text style={{ fontSize: 20 }}>⭐</Text>
+                <View>
+                  <Text style={{ fontWeight: '700', color: '#111827', fontSize: 15 }}>
+                    {pointsBalance} pts
+                  </Text>
+                  <Text style={{ color: '#6B7280', fontSize: 12 }}>
+                    {pointsBalance >= freeDeliveryCost
+                      ? 'Redeem for free delivery!'
+                      : `${freeDeliveryCost - pointsBalance} more pts for free delivery`}
+                  </Text>
+                </View>
+              </View>
+              {pointsBalance >= freeDeliveryCost && (
+                <TouchableOpacity
+                  onPress={() => setRedeemPoints(r => !r)}
+                  style={{
+                    backgroundColor: redeemPoints ? '#16A34A' : '#F3F4F6',
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+                  }}
+                >
+                  <Text style={{ color: redeemPoints ? '#fff' : '#374151', fontWeight: '700', fontSize: 13 }}>
+                    {redeemPoints ? '✓ Applied' : 'Use points'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* Order Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Order Summary</Text>
@@ -358,7 +415,9 @@ export default function CheckoutScreen() {
           </View>
           <View style={styles.lineRow}>
             <Text style={styles.lineLabel}>Delivery Charge</Text>
-            <Text style={styles.lineValue}>{deliveryFee === 0 ? 'Free' : `$${deliveryFee.toFixed(2)}`}</Text>
+            <Text style={[styles.lineValue, effectiveDeliveryFee === 0 && deliveryFee > 0 && { color: '#16A34A' }]}>
+              {effectiveDeliveryFee === 0 ? (deliveryFee > 0 ? '🎉 Free (points)' : 'Free') : `$${effectiveDeliveryFee.toFixed(2)}`}
+            </Text>
           </View>
           <View style={[styles.lineRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>

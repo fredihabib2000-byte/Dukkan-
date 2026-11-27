@@ -64,6 +64,11 @@ export default function OrdersPage() {
     await supabase.from('orders').update({ status: next }).eq('id', order.id);
     setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: next } : o));
 
+    // Award loyalty points when delivered
+    if (next === 'delivered') {
+      supabase.rpc('award_order_points', { p_order_id: order.id }).catch(() => {});
+    }
+
     // Send push notification to customer
     try {
       const { data: token } = await supabase.rpc('get_push_token_for_order', { p_order_id: order.id });
