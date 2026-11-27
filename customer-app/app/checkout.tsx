@@ -411,7 +411,12 @@ export default function CheckoutScreen() {
                 style={[styles.modeBtn, paymentMethod === 'wish' && styles.modeBtnActive]}
                 onPress={() => setPaymentMethod('wish')}
               >
-                <Text style={[styles.modePrimary, paymentMethod === 'wish' && styles.modeTextActive]}>💜 Wish</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={{ width: 22, height: 22, borderRadius: 5, backgroundColor: '#E31E24', justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontWeight: '900', fontSize: 13, lineHeight: 16 }}>W</Text>
+                  </View>
+                  <Text style={[styles.modePrimary, paymentMethod === 'wish' && styles.modeTextActive]}>Wish</Text>
+                </View>
                 <Text style={[styles.modeSecondary, paymentMethod === 'wish' && { color: '#16A34A' }]}>Online transfer</Text>
               </TouchableOpacity>
             )}

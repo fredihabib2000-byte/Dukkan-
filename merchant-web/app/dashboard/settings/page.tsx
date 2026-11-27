@@ -128,7 +128,12 @@ export default function SettingsPage() {
             </div>
             <span className="ml-auto text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded-full">Active</span>
           </div>
-          <Field label="Wish Number (optional)">
+          <Field label={
+            <span className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-red-600 text-white font-black text-xs leading-none">W</span>
+              Wish Number (optional)
+            </span>
+          }>
             <input value={form.wish_number} onChange={e => set('wish_number', e.target.value)}
               className={inp} placeholder="e.g. 71 123 456" />
             <p className="text-xs text-gray-400 mt-1">
@@ -172,7 +177,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-700 mb-1">{label}</label>

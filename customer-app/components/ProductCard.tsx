@@ -2,15 +2,18 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Product } from '@/lib/types';
 import { useCartStore } from '@/store/cart';
+import { useWishlistStore } from '@/store/wishlist';
 
 type Props = { product: Product; storeId: string; onPress: () => void };
 
 export function ProductCard({ product, storeId, onPress }: Props) {
   const { addItem, items, updateQuantity } = useCartStore();
+  const { toggle, isSaved } = useWishlistStore();
   const cartItem = items.find((i) => i.product.id === product.id);
   const qty = cartItem?.quantity ?? 0;
   const hasDiscount = !!product.discount_percent;
   const img = product.images?.[0];
+  const saved = isSaved(product.id);
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
@@ -44,6 +47,19 @@ export function ProductCard({ product, storeId, onPress }: Props) {
             </View>
           </View>
         )}
+
+        {/* Wishlist heart */}
+        <TouchableOpacity
+          style={styles.heartBtn}
+          onPress={(e) => { e.stopPropagation(); toggle(product, storeId); }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+          <Ionicons
+            name={saved ? 'heart' : 'heart-outline'}
+            size={18}
+            color={saved ? '#EF4444' : '#9CA3AF'}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.info}>
@@ -99,6 +115,12 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: 120 },
   imagePlaceholder: { height: 120, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center' },
   badgeStack: { position: 'absolute', top: 7, left: 7, gap: 3 },
+  heartBtn: {
+    position: 'absolute', top: 6, right: 6,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.88)',
+    justifyContent: 'center', alignItems: 'center',
+  },
   discountBadge: {
     backgroundColor: '#EF4444', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3,
     alignSelf: 'flex-start',
