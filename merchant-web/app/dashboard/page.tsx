@@ -4,6 +4,41 @@ import { supabase } from '@/lib/supabase';
 import { useStore } from '@/hooks/useStore';
 import { ORDER_STATUS_LABEL, STATUS_COLOR, type Order } from '@/lib/types';
 
+function LicenseBanner({ expiresAt }: { expiresAt: string | null }) {
+  if (!expiresAt) return null;
+  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86_400_000);
+  if (days > 30) return null;
+  if (days < 0)
+    return (
+      <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+        <span className="text-2xl">🔴</span>
+        <div>
+          <p className="font-bold text-red-700">Your license has expired</p>
+          <p className="text-sm text-red-500 mt-0.5">Please contact support to renew your Dukkan subscription.</p>
+        </div>
+      </div>
+    );
+  if (days <= 7)
+    return (
+      <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+        <span className="text-2xl animate-pulse">⚠️</span>
+        <div>
+          <p className="font-bold text-red-700">License expires in {days} day{days !== 1 ? 's' : ''}!</p>
+          <p className="text-sm text-red-500 mt-0.5">Contact your Dukkan provider to renew before it expires.</p>
+        </div>
+      </div>
+    );
+  return (
+    <div className="mb-6 bg-orange-50 border border-orange-200 rounded-2xl px-5 py-4 flex items-center gap-3">
+      <span className="text-2xl">🔑</span>
+      <div>
+        <p className="font-bold text-orange-700">License expires in {days} days</p>
+        <p className="text-sm text-orange-500 mt-0.5">Expires on {new Date(expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })}.</p>
+      </div>
+    </div>
+  );
+}
+
 type Stats = { orders: number; revenue: number; products: number; pending: number };
 
 function StatCard({ icon, label, value, sub }: { icon: string; label: string; value: string | number; sub?: string }) {
@@ -22,10 +57,20 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ orders: 0, revenue: 0, products: 0, pending: 0 });
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [licenseExpiresAt, setLicenseExpiresAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!store) return;
     const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: lc } = await supabase
+          .from('license_codes')
+          .select('expires_at')
+          .eq('used_by', user.id)
+          .maybeSingle();
+        if (lc?.expires_at) setLicenseExpiresAt(lc.expires_at);
+      }
       const [ordersRes, productsRes, pendingRes, recentRes] = await Promise.all([
         supabase.from('orders').select('total').eq('store_id', store.id).eq('status', 'delivered'),
         supabase.from('products').select('id', { count: 'exact' }).eq('store_id', store.id),
@@ -58,6 +103,8 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-extrabold text-gray-900">Overview</h1>
         <p className="text-gray-500 mt-1">Welcome back, {store?.name ?? 'store owner'} 👋</p>
       </div>
+
+      <LicenseBanner expiresAt={licenseExpiresAt} />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
