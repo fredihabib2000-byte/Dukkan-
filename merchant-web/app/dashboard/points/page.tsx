@@ -15,12 +15,14 @@ interface Config {
   enabled: boolean;
   points_per_dollar: number;
   free_delivery_cost: number;
+  points_threshold: number;
+  discount_percent: number;
 }
 
 export default function PointsPage() {
   const { store } = useStore();
   const [customers, setCustomers] = useState<CustomerPoints[]>([]);
-  const [config, setConfig] = useState<Config>({ enabled: true, points_per_dollar: 1, free_delivery_cost: 100 });
+  const [config, setConfig] = useState<Config>({ enabled: true, points_per_dollar: 1, free_delivery_cost: 100, points_threshold: 1000, discount_percent: 10 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -32,7 +34,14 @@ export default function PointsPage() {
       supabase.rpc('get_store_points_config', { p_store_id: store.id }),
     ]).then(([pts, cfg]) => {
       if (pts.data) setCustomers(pts.data as CustomerPoints[]);
-      if (cfg.data) setConfig(cfg.data as Config);
+      if (cfg.data) {
+        const d = cfg.data as Config;
+        setConfig({
+          ...d,
+          points_threshold: d.points_threshold ?? d.free_delivery_cost ?? 1000,
+          discount_percent: d.discount_percent ?? 10,
+        });
+      }
       setLoading(false);
     });
   }, [store]);
@@ -44,7 +53,9 @@ export default function PointsPage() {
       store_id: store.id,
       enabled: config.enabled,
       points_per_dollar: config.points_per_dollar,
-      free_delivery_cost: config.free_delivery_cost,
+      free_delivery_cost: config.points_threshold,
+      points_threshold: config.points_threshold,
+      discount_percent: config.discount_percent,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'store_id' });
     setSaving(false);
@@ -74,7 +85,7 @@ export default function PointsPage() {
           </label>
         </div>
 
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-3 gap-5">
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Points per $1 spent</label>
             <input
@@ -82,21 +93,30 @@ export default function PointsPage() {
               onChange={e => setConfig(c => ({ ...c, points_per_dollar: parseFloat(e.target.value) || 1 }))}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
-            <p className="text-xs text-gray-400 mt-1">Customer earns this many points for each dollar spent.</p>
+            <p className="text-xs text-gray-400 mt-1">Points earned per $1 spent.</p>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Free delivery cost (pts)</label>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Points needed for discount</label>
             <input
-              type="number" min={10} step={10} value={config.free_delivery_cost}
-              onChange={e => setConfig(c => ({ ...c, free_delivery_cost: parseInt(e.target.value) || 100 }))}
+              type="number" min={10} step={10} value={config.points_threshold}
+              onChange={e => setConfig(c => ({ ...c, points_threshold: parseInt(e.target.value) || 100 }))}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
-            <p className="text-xs text-gray-400 mt-1">Points needed to get free delivery on an order.</p>
+            <p className="text-xs text-gray-400 mt-1">Customer needs this many points to redeem.</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Discount %</label>
+            <input
+              type="number" min={1} max={100} step={1} value={config.discount_percent}
+              onChange={e => setConfig(c => ({ ...c, discount_percent: parseInt(e.target.value) || 10 }))}
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">% off the subtotal when points are redeemed.</p>
           </div>
         </div>
 
         <div className="mt-5 p-4 bg-brand-50 rounded-xl text-sm text-brand-700">
-          <span className="font-bold">Example:</span> A ${(config.free_delivery_cost / config.points_per_dollar).toFixed(0)} order earns {config.free_delivery_cost} points → free delivery reward.
+          <span className="font-bold">Example:</span> Customer spends ${(config.points_threshold / config.points_per_dollar).toFixed(0)} → earns {config.points_threshold} pts → redeems for {config.discount_percent}% off their next order.
         </div>
 
         <button
@@ -133,11 +153,11 @@ export default function PointsPage() {
                   <p className="text-xs text-gray-400 truncate">{c.email}</p>
                 </div>
                 <div className="text-right">
-                  <p className={`text-sm font-extrabold ${c.balance >= config.free_delivery_cost ? 'text-green-600' : 'text-gray-800'}`}>
+                  <p className={`text-sm font-extrabold ${c.balance >= config.points_threshold ? 'text-green-600' : 'text-gray-800'}`}>
                     {c.balance.toLocaleString()} pts
                   </p>
-                  {c.balance >= config.free_delivery_cost && (
-                    <p className="text-[10px] text-green-500 font-semibold">Can redeem!</p>
+                  {c.balance >= config.points_threshold && (
+                    <p className="text-[10px] text-green-500 font-semibold">Can redeem {config.discount_percent}% off!</p>
                   )}
                   {c.last_earned && (
                     <p className="text-[10px] text-gray-400">

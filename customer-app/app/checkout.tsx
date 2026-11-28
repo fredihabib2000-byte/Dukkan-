@@ -108,14 +108,16 @@ export default function CheckoutScreen() {
   const [storePhone, setStorePhone] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'wish'>('cash');
   const [pointsBalance, setPointsBalance] = useState(0);
-  const [freeDeliveryCost, setFreeDeliveryCost] = useState(100);
+  const [pointsThreshold, setPointsThreshold] = useState(1000);
+  const [discountPercent, setDiscountPercent] = useState(10);
   const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
   const [redeemPoints, setRedeemPoints] = useState(false);
-  const [pointsRedeemed, setPointsRedeemed] = useState(false);
 
   const subtotal = total();
-  const effectiveDeliveryFee = redeemPoints && pointsBalance >= freeDeliveryCost ? 0 : deliveryFee;
-  const orderTotal = subtotal + effectiveDeliveryFee;
+  const discountAmount = redeemPoints && pointsBalance >= pointsThreshold
+    ? parseFloat((subtotal * discountPercent / 100).toFixed(2))
+    : 0;
+  const orderTotal = subtotal + deliveryFee - discountAmount;
 
   useEffect(() => {
     if (!storeId) return;
@@ -129,7 +131,11 @@ export default function CheckoutScreen() {
         }
       });
     supabase.rpc('get_store_points_config', { p_store_id: storeId }).then(({ data }) => {
-      if (data) { setLoyaltyEnabled(data.enabled); setFreeDeliveryCost(data.free_delivery_cost); }
+      if (data) {
+        setLoyaltyEnabled(data.enabled);
+        setPointsThreshold(data.points_threshold ?? data.free_delivery_cost ?? 1000);
+        setDiscountPercent(data.discount_percent ?? 10);
+      }
     });
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
@@ -209,15 +215,15 @@ export default function CheckoutScreen() {
       ? `Scheduled: ${scheduledTime}${instructionNote ? ' | ' + instructionNote : ''}`
       : instructionNote;
 
-    // Redeem points for free delivery if chosen
-    let appliedFreeDelivery = false;
-    if (redeemPoints && loyaltyEnabled && pointsBalance >= freeDeliveryCost && user?.id) {
-      const { data: rd } = await supabase.rpc('redeem_points_free_delivery', { p_store_id: storeId });
-      if (rd?.success) appliedFreeDelivery = true;
+    // Redeem points for % discount if chosen
+    let discountApplied = 0;
+    if (redeemPoints && loyaltyEnabled && pointsBalance >= pointsThreshold && user?.id) {
+      const { data: rd } = await supabase.rpc('redeem_points_discount', { p_store_id: storeId });
+      if (rd?.success) discountApplied = parseFloat((subtotal * rd.discount_percent / 100).toFixed(2));
     }
 
-    const finalDeliveryFee = appliedFreeDelivery ? 0 : deliveryFee;
-    const finalTotal = subtotal + finalDeliveryFee;
+    const finalDeliveryFee = deliveryFee;
+    const finalTotal = parseFloat((subtotal + finalDeliveryFee - discountApplied).toFixed(2));
 
     const { error } = await supabase.from('orders').insert({
       id: orderId,
@@ -227,7 +233,7 @@ export default function CheckoutScreen() {
       customer_phone: phone.trim(),
       subtotal,
       delivery_fee: finalDeliveryFee,
-      discount_amount: 0,
+      discount_amount: discountApplied,
       total: finalTotal,
       notes: deliveryNote || null,
       delivery_address: fullAddress,
@@ -262,8 +268,11 @@ export default function CheckoutScreen() {
     const mapsLine = gpsLat && gpsLng
       ? `\n🗺️ Maps: https://www.google.com/maps?q=${gpsLat},${gpsLng}`
       : '';
+    const discountLine = discountApplied > 0
+      ? `\nDiscount (${discountPercent}% pts): -$${discountApplied.toFixed(2)}`
+      : '';
     const storeMsg = encodeURIComponent(
-      `🛒 *New Order — ${storeName}*\n\n${itemsList}\n\nSubtotal: $${subtotal.toFixed(2)}\nDelivery: ${finalDeliveryFee === 0 ? 'Free' : '$' + finalDeliveryFee.toFixed(2)}\n*Total: $${finalTotal.toFixed(2)}*\n\n📍 ${fullAddress}${mapsLine}\n📞 ${name.trim()} — ${phone.trim()}\n💳 ${paymentMethod === 'wish' ? 'Wish' : 'Cash on Delivery'}`
+      `🛒 *New Order — ${storeName}*\n\n${itemsList}\n\nSubtotal: $${subtotal.toFixed(2)}\nDelivery: ${finalDeliveryFee === 0 ? 'Free' : '$' + finalDeliveryFee.toFixed(2)}${discountLine}\n*Total: $${finalTotal.toFixed(2)}*\n\n📍 ${fullAddress}${mapsLine}\n📞 ${name.trim()} — ${phone.trim()}\n💳 ${paymentMethod === 'wish' ? 'Wish' : 'Cash on Delivery'}`
     );
 
     const toStore = () => {
@@ -465,13 +474,13 @@ export default function CheckoutScreen() {
                     {pointsBalance} pts
                   </Text>
                   <Text style={{ color: '#6B7280', fontSize: 12 }}>
-                    {pointsBalance >= freeDeliveryCost
-                      ? 'Redeem for free delivery!'
-                      : `${freeDeliveryCost - pointsBalance} more pts for free delivery`}
+                    {pointsBalance >= pointsThreshold
+                      ? `Redeem for ${discountPercent}% off — save $${(subtotal * discountPercent / 100).toFixed(2)}!`
+                      : `${pointsThreshold - pointsBalance} more pts for ${discountPercent}% off`}
                   </Text>
                 </View>
               </View>
-              {pointsBalance >= freeDeliveryCost && (
+              {pointsBalance >= pointsThreshold && (
                 <TouchableOpacity
                   onPress={() => setRedeemPoints(r => !r)}
                   style={{
@@ -504,10 +513,16 @@ export default function CheckoutScreen() {
           </View>
           <View style={styles.lineRow}>
             <Text style={styles.lineLabel}>Delivery Charge</Text>
-            <Text style={[styles.lineValue, effectiveDeliveryFee === 0 && deliveryFee > 0 && { color: '#16A34A' }]}>
-              {effectiveDeliveryFee === 0 ? (deliveryFee > 0 ? '🎉 Free (points)' : 'Free') : `$${effectiveDeliveryFee.toFixed(2)}`}
+            <Text style={styles.lineValue}>
+              {deliveryFee === 0 ? 'Free' : `$${deliveryFee.toFixed(2)}`}
             </Text>
           </View>
+          {discountAmount > 0 && (
+            <View style={styles.lineRow}>
+              <Text style={styles.lineLabel}>Points Discount ({discountPercent}%)</Text>
+              <Text style={[styles.lineValue, { color: '#16A34A' }]}>-${discountAmount.toFixed(2)}</Text>
+            </View>
+          )}
           <View style={[styles.lineRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalValue}>${orderTotal.toFixed(2)}</Text>

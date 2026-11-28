@@ -11,6 +11,7 @@ const NAV = [
   { href: '/dashboard/categories', icon: '📂', label: 'Categories' },
   { href: '/dashboard/points',     icon: '⭐', label: 'Points' },
   { href: '/dashboard/wishlist',   icon: '♡', label: 'Wishlist' },
+  { href: '/dashboard/reports',    icon: '📈', label: 'Reports' },
   { href: '/dashboard/settings',   icon: '⚙️', label: 'Settings' },
 ];
 
