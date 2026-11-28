@@ -66,7 +66,7 @@ export default function OrdersPage() {
 
     // Award loyalty points when delivered
     if (next === 'delivered') {
-      supabase.rpc('award_order_points', { p_order_id: order.id }).catch(() => {});
+      void supabase.rpc('award_order_points', { p_order_id: order.id });
     }
 
     // Send push notification to customer
